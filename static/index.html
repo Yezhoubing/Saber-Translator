@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI 漫画翻译</title>
+    <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <aside id="settings-sidebar">
+            <div class="card settings-card">
+                <h2>翻译设置</h2>
+                <div class="settings-form">
+                    <div>
+                        <label for="targetLanguage">翻译语言:</label>
+                        <select id="targetLanguage">
+                            <option value="zh">简体中文</option>
+                            <option value="en">英语</option>
+                            <!-- 添加更多语言选项 -->
+                        </select>
+                    </div>
+                    <div>
+                        <label for="fontSize">字号大小:</label>
+                        <input type="number" id="fontSize" value="30" min="10" max="100">
+                    </div>
+                    <div>
+                        <label for="apiKey">API Key:</label>
+                        <input type="text" id="apiKey" placeholder="请输入API Key">
+                        <p class="input-hint">用于翻译API (例如 硅 flow API)</p>
+                    </div>
+                    <div>
+                        <label for="modelName">大模型型号:</label>
+                        <input type="text" id="modelName" placeholder="请输入模型型号">
+                        <p class="input-hint">例如 gpt-3.5-turbo, gpt-4</p>
+                    </div>
+                    <button id="translateButton" disabled>翻译当前图片</button>
+                    <button id="translateAllButton" disabled>翻译所有图片</button>
+                    <div class="navigation-buttons">  <!--  用于包裹导航按钮的容器 -->
+                        <button id="prevImageButton" disabled>上一张</button>
+                        <button id="nextImageButton" disabled>下一张</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <main id="image-display-area">
+            <section id="upload-section" class="card upload-card">
+                <div id="drop-area">
+                    <p>拖拽图片到这里，或 <span id="select-file-link" style="color: blue; cursor: pointer; text-decoration: underline;">点击选择文件</span></p>
+                    <input type="file" id="imageUpload" accept="image/*" multiple style="display: none;">
+                </div>
+                <p id="loadingMessage" style="display: none;">处理中，请稍候...</p>
+                <div id="loadingAnimation" class="loader" style="display: none;"></div>
+                <p id="errorMessage" class="error-message" style="display: none;"></p>
+            </section>
+            <section id="result-section" class="card result-card" style="display: none;">
+                <img id="translatedImageDisplay" src="#" alt="翻译后图片" style="display: none;">
+                <div class="text-info" id="detectedTextInfo" style="display: none;">
+                    <h3>检测到的文本</h3>
+                    <pre id="detectedTextList"></pre>
+                </div>
+                <button id="downloadButton" style="display: none;">下载翻译后图片</button>
+            </section>
+        </main>
+
+        <aside id="thumbnail-sidebar">
+            <div class="card thumbnail-card">
+                <h2>图片概览</h2>
+                <ul id="thumbnailList">
+                    <!-- 缩略图列表将在此处动态生成 -->
+                </ul>
+            </div>
+        </aside>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
