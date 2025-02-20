@@ -29,12 +29,9 @@
 
 ## 安装步骤 (Installation)
 
-1.  **克隆仓库 (Clone Repository):**
+1.  **在Releases下载最新的版本后解压**
 
-    ```bash
-    git clone https://github.com/MashiroSaber03/Saber-Translator
-    ```
-2.  **创建虚拟环境 (Create Virtual Environment) (推荐):**
+2.  **创建虚拟环境 (Create Virtual Environment):**
 
         ```bash
         python3 -m venv venv  # macOS/Linux
