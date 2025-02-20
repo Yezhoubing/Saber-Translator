@@ -32,26 +32,14 @@
 1.  **克隆仓库 (Clone Repository):**
 
     ```bash
-    git clone https://github.com/your_username/ai-manga-translator.git
-    cd ai-manga-translator
+    git clone https://github.com/MashiroSaber03/Saber-Translator
     ```
-    请将 `https://github.com/your_username/ai-manga-translator.git` 替换为你的仓库地址。
-
 2.  **创建虚拟环境 (Create Virtual Environment) (推荐):**
-
-    *   **使用 `venv` (Python 自带):**
 
         ```bash
         python3 -m venv venv  # macOS/Linux
         python -m venv venv   # Windows
         ```
-
-    *   **使用 `conda` (如果安装了 Anaconda/Miniconda):**
-
-        ```bash
-        conda create -n manga_translator python=3.9  # 可以指定 Python 版本
-        ```
-
 3.  **激活虚拟环境 (Activate Virtual Environment):**
 
     *   **`venv`:**
@@ -72,91 +60,6 @@
 ## 使用方法 (Usage)
 
 1.  **启动程序 :**
-
-    ```bash
-    python app.py
-    ```
-
-2.  **打开 Web 界面 (Open Web Interface):**
-
-    程序启动后，会在终端或命令提示符中显示运行地址，通常是 `http://127.0.0.1:5000/`。  打开你的浏览器，访问这个地址。
-
-3.  **使用漫画翻译器 (Use Manga Translator):**
-
-    *   **上传图片:**  在网页上，你可以拖拽漫画图片到 "拖拽图片到这里..." 区域，或者点击 "点击选择文件" 链接选择图片文件。 支持单张或多张图片上传。
-    *   **设置翻译选项:**  在左侧的 "翻译设置" 侧边栏，你可以设置：
-        *   **翻译语言:**  目前默认为 "简体中文"。
-        *   **字号大小:**  调整翻译后文本的字号（
-## 运行环境 (Running Environment)
-
-*   Python 3.7 或更高版本 (建议使用 Python 3.9+)
-*   推荐使用虚拟环境 (Virtual Environment)
-
-## 安装步骤 (Installation)
-
-1.  **克隆仓库 (Clone Repository):**
-
-    ```bash
-    git clone https://github.com/your_username/ai-manga-translator.git
-    cd ai-manga-translator
-    ```
-    请将 `https://github.com/your_username/ai-manga-translator.git` 替换为你的仓库地址。
-
-2.  **创建虚拟环境 (Create Virtual Environment) (推荐):**
-
-    *   **使用 `venv` (Python 自带):**
-
-        ```bash
-        python3 -m venv venv  # macOS/Linux
-        python -m venv venv   # Windows
-        ```
-
-    *   **使用 `conda` (如果安装了 Anaconda/Miniconda):**
-
-        ```bash
-        conda create -n manga_translator python=3.9  # 可以指定 Python 版本
-        ```
-
-3.  **激活虚拟环境 (Activate Virtual Environment):**
-
-    *   **`venv`:**
-        *   **macOS/Linux:** `source venv/bin/activate`
-        *   **Windows:** `venv\Scripts\activate`
-
-    *   **`conda`:**
-        ```bash
-        conda activate manga_translator  # 或者你创建的虚拟环境名称
-        ```
-
-4.  **安装依赖 (Install Dependencies):**
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-5.  **下载模型文件 (Download Model Files):**
-
-    *   **YOLOv5 模型:**  项目使用了 YOLOv5 模型进行气泡检测。  `weights/best.pt` 文件 **没有包含在仓库中** (由于文件大小限制)。 你需要手动下载 `best.pt` 文件，并将其放置在 `weights/` 文件夹下。
-        *   YOLOv5 模型权重文件需要自行训练或联系作者获取。(如果你有训练好的模型, 或者找到了可用的模型，请提供链接)
-
-    *   **Manga OCR 模型:**  `manga_ocr_model/` 文件夹 **完整地包含在仓库中**。  你无需额外下载。如果你想使用最新的版本可以从[Manga OCR GitHub 仓库](https://github.com/kha-white/manga-ocr) 下载替换
-
-    **请确保 `weights/best.pt` 和 `manga_ocr_model/` 文件夹都已正确放置在项目目录下。**
-
-6.  **配置 API Key (Configure API Key) (可选):**
-
-    *   本项目使用 SiliconFlow API (OpenAI) 进行翻译。 你需要拥有一个 SiliconFlow API Key (OpenAI) 才能使用翻译功能。
-    *   **获取 API Key:**  访问 [SiliconFlow 官网](https://api.siliconflow.cn/) 或 [OpenAI 官网](https://platform.openai.com/api-keys) 获取你的 API Key。
-    *   **配置 Web 界面:**
-        *   在 Web 界面直接输入 API Key 和 模型名称。
-
-    *   **注意安全:**  请妥善保管你的 API Key，避免泄露。
-
-## 使用方法 (Usage)
-
-1.  **启动程序 (Run the Application):**
-
-    在激活的虚拟环境中，进入 `ai-manga-translator/` 目录，运行以下命令启动 Flask Web 应用:
 
     ```bash
     python app.py
