@@ -17,13 +17,15 @@ $(document).ready(function() {
     const detectedTextInfo = $("#detectedTextInfo");
     const detectedTextList = $("#detectedTextList");
     const thumbnailList = $("#thumbnailList");
+    const modelProviderSelect = $("#modelProvider");
+    const modelNameInput = $("#modelName");
+    const modelSuggestionsDiv = $("#model-suggestions");
 
-
-    // 阻止默认拖拽行为 - **确保 preventDefault 和 stopPropagation 正确调用**
+    // 阻止默认拖拽行为
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropArea.on(eventName, function(e) {
-            e.preventDefault(); // **关键: 阻止浏览器默认行为**
-            e.stopPropagation(); // **关键: 阻止事件冒泡**
+            e.preventDefault();
+            e.stopPropagation();
         });
     });
 
@@ -42,16 +44,16 @@ $(document).ready(function() {
 
     // 处理拖拽上传
     dropArea.on('drop', function(e) {
-        e.preventDefault(); // **再次确保 preventDefault**
-        e.stopPropagation(); // **再次确保 stopPropagation**
+        e.preventDefault();
+        e.stopPropagation();
         const dt = e.originalEvent.dataTransfer;
         const files = dt.files;
         handleFiles(files);
     });
 
     // 点击 "点击选择文件" 链接触发文件选择
-    selectFileLink.click(function(e) {
-        e.preventDefault(); // 阻止链接默认跳转行为 (虽然这里不是链接)
+    selectFileLink.click(function() {
+        e.preventDefault();
         imageUploadInput.click();
     });
 
@@ -69,7 +71,7 @@ $(document).ready(function() {
             detectedTextInfo.hide();
             translateButton.prop('disabled', true);
             translateAllButton.prop('disabled', true);
-            prevImageButton.prop('disabled', true); // 上传新图片后禁用导航按钮
+            prevImageButton.prop('disabled', true);
             nextImageButton.prop('disabled', true);
 
             images = [];
@@ -109,6 +111,7 @@ $(document).ready(function() {
                 if (images.length > 0) {
                     translateButton.prop('disabled', false);
                     translateAllButton.prop('disabled', false);
+                    sortImagesByName();
                     renderThumbnails();
                     switchImage(0);
                 } else {
@@ -123,6 +126,18 @@ $(document).ready(function() {
             });
 
         }
+    }
+
+    function sortImagesByName() {
+        images.sort((a, b) => {
+            if (a.fileName < b.fileName) {
+                return -1;
+            }
+            if (a.fileName > b.fileName) {
+                return 1;
+            }
+            return 0;
+        });
     }
 
 
@@ -168,14 +183,14 @@ $(document).ready(function() {
             });
             thumbnailList.append(listItem);
         });
-        updateNavigationButtons(); // 初始化导航按钮状态
+        updateNavigationButtons();
     }
 
 
     function switchImage(index) {
         if (index >= 0 && index < images.length) {
             currentImageIndex = index;
-            console.log("switchImage called, index:", index, "currentImageIndex updated to:", currentImageIndex); // 调试日志
+            console.log("switchImage called, index:", index, "currentImageIndex updated to:", currentImageIndex);
             translatedImageDisplay.attr('src', images[index].translatedDataURL || images[index].originalDataURL).show();
             resultSection.toggle(images[index].translatedDataURL !== null);
             downloadButton.toggle(images[index].translatedDataURL !== null);
@@ -189,9 +204,8 @@ $(document).ready(function() {
         }
     }
 
-    // **新增函数：更新导航按钮状态**
     function updateNavigationButtons() {
-        console.log("updateNavigationButtons called, currentImageIndex:", currentImageIndex, "images.length:", images.length); // 调试日志
+        console.log("updateNavigationButtons called, currentImageIndex:", currentImageIndex, "images.length:", images.length);
         if (images.length <= 1) {
             prevImageButton.prop('disabled', true);
             nextImageButton.prop('disabled', true);
@@ -201,10 +215,9 @@ $(document).ready(function() {
         }
     }
 
-
     // "上一张" 按钮点击事件
     prevImageButton.click(function() {
-        console.log("prevImageButton clicked, currentImageIndex before:", currentImageIndex); // 调试日志
+        console.log("prevImageButton clicked, currentImageIndex before:", currentImageIndex);
         if (currentImageIndex > 0) {
             switchImage(currentImageIndex - 1);
         }
@@ -212,12 +225,11 @@ $(document).ready(function() {
 
     // "下一张" 按钮点击事件
     nextImageButton.click(function() {
-        console.log("nextImageButton clicked, currentImageIndex before:", currentImageIndex); // 调试日志
+        console.log("nextImageButton clicked, currentImageIndex before:", currentImageIndex);
         if (currentImageIndex < images.length - 1) {
             switchImage(currentImageIndex + 1);
         }
     });
-
 
     translateButton.click(function() {
         if (currentImageIndex === -1) {
@@ -236,6 +248,7 @@ $(document).ready(function() {
         const apiKey = $("#apiKey").val();
         const modelName = $("#modelName").val();
         const fontSize = $("#fontSize").val();
+        const modelProvider = $("#modelProvider").val();
         const imageData = images[currentImageIndex].originalDataURL.split(',')[1];
 
 
@@ -247,12 +260,11 @@ $(document).ready(function() {
                 target_language: targetLanguage,
                 textDirection: 'vertical',
                 fontSize: fontSize,
-                model_provider: 'siliconflow',
+                model_provider: modelProvider,
                 api_key: apiKey,
                 model_name: modelName
             }),
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
+            contentType: 'application/json',
             success: function(response) {
                 loadingMessage.hide();
                 loadingAnimation.hide();
@@ -261,6 +273,25 @@ $(document).ready(function() {
                 images[currentImageIndex].bubbleCoords = response.bubble_coords || [];
 
                 switchImage(currentImageIndex);
+
+                // **保存模型信息到后端**
+                const data = {
+                    modelProvider: modelProvider,
+                    modelName: modelName
+                };
+                $.ajax({
+                    url: '/save_model_info',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(data),
+                    success: function() {
+                        console.log("模型信息保存成功");
+                    },
+                    error: function(error) {
+                        console.error("模型信息保存失败:", error);
+                    }
+                });
+
 
             },
             error: function(error) {
@@ -280,8 +311,6 @@ $(document).ready(function() {
         });
     });
 
-
-
     translateAllButton.click(function() {
         if (images.length === 0) {
             alert("请先上传漫画图片");
@@ -289,7 +318,6 @@ $(document).ready(function() {
         }
         translateAllImages();
     });
-
 
     function translateAllImages() {
         loadingMessage.show();
@@ -305,6 +333,7 @@ $(document).ready(function() {
         const apiKey = $("#apiKey").val();
         const modelName = $("#modelName").val();
         const fontSize = $("#fontSize").val();
+        const modelProvider = $("#modelProvider").val();
 
         Promise.all(images.map((imageData, index) => {
             return new Promise((resolve, reject) => {
@@ -313,7 +342,7 @@ $(document).ready(function() {
                     target_language: targetLanguage,
                     textDirection: 'vertical',
                     fontSize: fontSize,
-                    model_provider: 'siliconflow',
+                    model_provider: modelProvider,
                     api_key: apiKey,
                     model_name: modelName
                 };
@@ -322,8 +351,7 @@ $(document).ready(function() {
                     type: 'POST',
                     url: '/translate_image',
                     data: JSON.stringify(postData),
-                    contentType: 'application/json; charset=utf-8',
-                    dataType: 'json',
+                    contentType: 'application/json',
                     success: function(response) {
                         images[index].translatedDataURL = 'data:image/png;base64,' + response.translated_image;
                         images[index].bubbleTexts = response.bubble_texts || [];
@@ -354,7 +382,7 @@ $(document).ready(function() {
     }
 
 
-    downloadButton.click(function(e) {
+    downloadButton.click(function() {
         if (currentImageIndex !== -1 && images[currentImageIndex].translatedDataURL) {
             const dataURL = images[currentImageIndex].translatedDataURL;
             const a = document.createElement('a');
@@ -370,7 +398,7 @@ $(document).ready(function() {
 
 
     translateAllButton.prop('disabled', true);
-    prevImageButton.prop('disabled', true); // 初始禁用导航按钮
+    prevImageButton.prop('disabled', true);
     nextImageButton.prop('disabled', true);
 
     const originalHandleFiles = handleFiles;
@@ -380,4 +408,54 @@ $(document).ready(function() {
     };
 
 
+     // **监听模型型号输入框的 focus 事件**
+    modelNameInput.on('focus', function() {
+        const selectedProvider = modelProviderSelect.val();
+        if (selectedProvider) {
+            $.ajax({
+                url: '/get_used_models',
+                type: 'GET',
+                data: { model_provider: selectedProvider },
+                dataType: 'json',
+                success: function(response) {
+                    modelSuggestionsDiv.empty();
+                    if (response.models && response.models.length > 0) {
+                        const suggestionList = $('<ul></ul>');
+                        response.models.forEach(function(model) {
+                            const listItem = $('<li></li>').text(model).click(function() {
+                                modelNameInput.val(model);
+                                modelSuggestionsDiv.empty();
+                            });
+                            suggestionList.append(listItem);
+                        });
+                        modelSuggestionsDiv.append(suggestionList);
+                    } else {
+                        modelSuggestionsDiv.text("没有历史模型");
+                    }
+                },
+                error: function(error) {
+                    console.error("获取历史模型失败:", error);
+                    modelSuggestionsDiv.text("加载历史模型失败");
+                }
+            });
+        } else {
+            modelSuggestionsDiv.empty();
+        }
+    });
+
+     // **页面加载时，从后端获取模型信息 (移除自动填充)**
+    $.ajax({
+        url: '/get_model_info',
+        type: 'GET',
+        dataType: 'json',
+        success: function(response) {
+            if (response && response.modelProvider) {
+                modelProviderSelect.val(response.modelProvider);
+                // 移除自动填充: modelNameInput.val(response.modelName);
+            }
+        },
+        error: function(error) {
+            console.error("无法从后端获取模型信息:", error);
+        }
+    });
 });
