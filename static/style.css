@@ -10,31 +10,28 @@ body {
 }
 
 .container {
-    display: flex; /* 使用 Flexbox 布局 */
-    max-width: 1400px; /* 增大 max-width 以适应更宽的布局 */
+    display: flex;
+    max-width: 1400px;
     margin: 20px auto;
-    /*  关键调整：移除左右 padding，因为中间区域已经有 margin 了 */
     padding-left: 0;
     padding-right: 0;
 }
 
-/* 侧边栏通用样式 */
 aside {
-    width: 200px; /* 固定宽度侧边栏 */
+    width: 200px;
     padding: 20px;
 }
 
-/* 左侧设置侧边栏 -  固定定位 */
 #settings-sidebar {
-    position: fixed; /*  设置为固定定位 */
-    top: 20px; /*  距离顶部 20px, 移除 header 后调整 */
-    left: 20px; /*  距离左侧 20px */
-    width: 200px;
-    height: calc(100vh - 40px); /*  高度占据剩余视口高度，减去 顶部和底部空间, 移除 header 后调整 */
-    overflow-y: auto; /*  内容超出高度时显示滚动条 */
-    padding-top: 20px; /*  顶部内边距，内容与顶部留出一些距离 */
-    box-sizing: border-box; /*  防止 padding 撑大宽度 */
-    margin-right: 0; /*  移除 margin-right，因为已经是固定定位 */
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    width: 300px; /* Increased width by 50% */
+    height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding-top: 20px;
+    box-sizing: border-box;
+    margin-right: 0;
     order: -1;
 }
 
@@ -104,7 +101,7 @@ aside {
 #settings-sidebar button#translateAllButton {
     width: 100%;
     padding: 12px 25px;
-    background-color: #007bff; /* Example: Blue for translate all */
+    background-color: #007bff;
     color: white;
     border: none;
     border-radius: 5px;
@@ -124,15 +121,16 @@ aside {
 }
 
 #settings-sidebar .navigation-buttons {
-    display: flex; /*  使用 Flexbox 水平排列按钮 */
-    gap: 10px; /*  按钮之间的间距 */
-    margin-top: 10px; /*  与上方按钮的间距 */
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+    justify-content: space-between;
 }
 
 #settings-sidebar .navigation-buttons button {
-    flex-grow: 1; /*  让按钮平分容器宽度 */
+    width: 48%;
     padding: 12px 20px;
-    background-color: #6c757d; /* Example: Gray button */
+    background-color: #6c757d;
     color: white;
     border: none;
     border-radius: 5px;
@@ -151,14 +149,14 @@ aside {
 }
 
 
-/* 中间主图片显示区域 -  调整 margin 以避免被固定侧边栏遮挡 */
+/* 中间主图片显示区域 -  调整 margin 和 flex-grow 以增加宽度 */
 #image-display-area {
-    flex-grow: 2;
+    flex-grow: 2.4; /* Increased width by 20% */
     padding: 20px;
     /*  关键调整：增加左右 margin，为固定侧边栏腾出空间 */
-    margin-left: 240px; /*  左侧侧边栏宽度 + 间距 (200px + 40px) */
-    margin-right: 240px; /*  右侧侧边栏宽度 + 间距 (200px + 40px) */
-    max-width: none; /*  移除 max-width 限制，让中间区域宽度自适应 */
+    margin-left: 340px; /* Updated margin-left to accommodate wider sidebar */
+    margin-right: 240px;
+    max-width: none;
 }
 
 #image-display-area .card {
@@ -190,7 +188,7 @@ aside {
 
 #image-display-area #result-section #translatedImageDisplay {
     max-width: 100%;
-    max-height: 85vh; /* 进一步增大最大高度，利用更大的中间区域 */
+    max-height: 85vh;
     height: auto;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -208,6 +206,7 @@ aside {
     font-family: monospace;
     font-size: 0.9em;
     text-align: left;
+    overflow-x: auto;
 }
 
 #image-display-area #result-section button#downloadButton {
@@ -312,83 +311,6 @@ aside {
     border-radius: 4px;
 }
 
-#image-display-area #upload-section .error-message {
-    color: #d9534f;
-    font-weight: bold;
-}
-
-#image-display-area #upload-section .loader {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #3498db;
-    border-radius: 50%;
-    width: 30px;
-    height: 30px;
-    animation: spin 1s linear infinite;
-    margin: 10px auto;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-
-/* 右侧缩略图侧边栏 - 固定定位 */
-#thumbnail-sidebar {
-    position: fixed; /*  设置为固定定位 */
-    top: 20px; /*  距离顶部 20px, 移除 header 后调整 */
-    right: 20px; /*  距离右侧 20px */
-    width: 200px;
-    height: calc(100vh - 40px); /*  高度占据剩余视口高度，减去 顶部和底部空间, 移除 header 后调整 */
-    overflow-y: auto; /*  内容超出高度时显示滚动条 */
-    padding-top: 20px; /*  顶部内边距，内容与顶部留出一些距离 */
-    box-sizing: border-box; /*  防止 padding 撑大宽度 */
-    margin-left: 0; /*  移除 margin-left，因为已经是固定定位 */
-    order: 1;
-}
-
-#thumbnail-sidebar .thumbnail-card {
-    background-color: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    padding: 20px;
-}
-
-#thumbnail-sidebar .thumbnail-card h2 {
-    border-bottom: 2px solid #eee;
-    padding-bottom: 10px;
-    margin-bottom: 15px;
-}
-
-#thumbnail-sidebar ul#thumbnailList {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-#thumbnail-sidebar ul#thumbnailList li {
-    cursor: pointer;
-    border: 2px solid transparent;
-    border-radius: 4px;
-    transition: border-color 0.2s;
-}
-
-#thumbnail-sidebar ul#thumbnailList li.active,
-#thumbnail-sidebar ul#thumbnailList li:hover {
-    border-color: #3498db;
-}
-
-
-#thumbnail-sidebar ul#thumbnailList li img {
-    max-width: 100%;
-    height: auto;
-    display: block;
-    border-radius: 4px;
-}
-
 
 footer {
     text-align: center;
@@ -399,3 +321,30 @@ footer {
     margin-top: 20px; /*  减小 margin-top */
     clear: both; /*  清除浮动，确保 footer 在所有内容下方 */
 }
+
+#settings-sidebar #model-suggestions {
+    margin-top: 5px;
+    font-size: 0.9em;
+    color: #777;
+}
+
+#settings-sidebar #model-suggestions ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background-color: #f9f9f9;
+    max-height: 100px; /*  限制最大高度，超出时显示滚动条 */
+    overflow-y: auto;
+}
+
+#settings-sidebar #model-suggestions li {
+    padding: 8px 10px;
+    cursor: pointer;
+}
+
+#settings-sidebar #model-suggestions li:hover {
+    background-color: #eee;
+}
+
