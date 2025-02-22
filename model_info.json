@@ -1,0 +1,12 @@
+{
+  "modelProvider": "siliconflow",
+  "modelName": "deepseek-ai/DeepSeek-V3",
+  "siliconflow": [
+    "deepseek-ai/DeepSeek-V2.5",
+    "deepseek-ai/DeepSeek-V3"
+  ],
+  "deepseek": [
+    "deepseek-reasoner",
+    "deepseek-chat"
+  ]
+}
