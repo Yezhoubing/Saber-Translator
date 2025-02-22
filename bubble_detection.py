@@ -26,13 +26,15 @@ ocr = manga_ocr.MangaOcr(model_path)  # 修改这里
 
 
 def translate_text(text, target_language, model_provider, api_key=None, model_name=None):
+    prompt_content = "你是一个好用的翻译助手。请将我的日文翻译成中文，将所有非中文的翻译成中文。我发给你所有的话都是需要翻译的内容，你只需要回答翻译结果。翻译结果请符合中文的语言习惯。"
+
     if model_provider == 'siliconflow':
         client = OpenAI(api_key=api_key, base_url="https://api.siliconflow.cn/v1")
         try:
             response = client.chat.completions.create(
                 model=model_name,
                 messages=[
-                    {"role": "system", "content": "你是一个翻译助手，将用户输入的日语翻译成简洁流畅的中文."},
+                    {"role": "system", "content": prompt_content},
                     {"role": "user", "content": text},
                 ],
                 timeout=10
@@ -41,6 +43,22 @@ def translate_text(text, target_language, model_provider, api_key=None, model_na
             return translated_text
         except Exception as e:
             print(f"翻译 API 请求失败: {e}")
+            return "翻译失败"
+    elif model_provider == 'deepseek':
+        client = OpenAI(api_key=api_key, base_url="https://api.deepseek.com")
+        try:
+            response = client.chat.completions.create(
+                model=model_name,
+                messages=[
+                    {"role": "system", "content": prompt_content},
+                    {"role": "user", "content": text},
+                ],
+                timeout=10
+            )
+            translated_text = response.choices[0].message.content.strip()
+            return translated_text
+        except Exception as e:
+            print(f"DeepSeek 翻译 API 请求失败: {e}")
             return "翻译失败"
     else:
         print(f"未知的翻译模型提供商: {model_provider}")
@@ -53,41 +71,36 @@ def draw_multiline_text_vertical_right_to_left(draw, text, font, x, y, max_heigh
     if not text:
         return
 
-    lines = []  # 存储所有列的文本
-    current_line = ""  # 当前列的文本
-    current_column_height = 0  # 当前列的高度
-    line_height = font.size + 5  # 行高（垂直字间距）
+    lines = []
+    current_line = ""
+    current_column_height = 0
+    line_height = font.size + 5
 
-    # 分割文本到列（保持自然顺序）
     for char in text:
         bbox = font.getbbox(char)
         char_height = bbox[3] - bbox[1]
 
-        # 检查当前列的高度是否超出最大高度
-        if current_column_height + line_height <= max_height:  # 预判下一个字符的高度
+        if current_column_height + line_height <= max_height:
             current_line += char
             current_column_height += line_height
         else:
             lines.append(current_line)
             current_line = char
-            current_column_height = line_height  # 新列的初始高度
+            current_column_height = line_height
 
-    lines.append(current_line)  # 添加最后一列
+    lines.append(current_line)
 
-    current_x = x  # 起始X坐标（最右列的X坐标）
-    column_width = font.size + 5  # 列宽（水平列间距）
+    current_x = x
+    column_width = font.size + 5
 
-    # 从右向左处理每一列
-    for line in lines:  # 注意：这里不再使用 reversed，直接按顺序处理
-        current_y = y  # 每列的起始Y坐标在顶部
-        # 列内字符按自然顺序从上到下排列
+    for line in lines:
+        current_y = y
         for char in line:
-            # 使用anchor参数确保右上角对齐
             draw.text((current_x, current_y), char, font=font, fill=fill, anchor="rt")
-            current_y += line_height  # 向下移动行高
-        current_x -= column_width  # 向左移动列宽
+            current_y += line_height
+        current_x -= column_width
 
-def detect_text_in_bubbles(image, target_language='zh', text_direction='vertical', fontSize=30, api_key=None, model_name=None):
+def detect_text_in_bubbles(image, target_language='zh', text_direction='vertical', fontSize=30, model_provider='siliconflow', api_key=None, model_name=None):
     """
     Detects text in speech bubbles and draws bounding boxes around them, filling with translated text, 只支持竖向排版，从右向左.
     """
@@ -122,7 +135,7 @@ def detect_text_in_bubbles(image, target_language='zh', text_direction='vertical
             bubble_img = img_cv[y1:y2, x1:x2]
             bubble_img_pil = Image.fromarray(cv2.cvtColor(bubble_img, cv2.COLOR_BGR2RGB))
             text = ocr(bubble_img_pil)
-            translated_text = translate_text(text, target_language, 'siliconflow', api_key=api_key, model_name=model_name)
+            translated_text = translate_text(text, target_language, model_provider, api_key=api_key, model_name=model_name)
             bubble_texts.append(translated_text)
 
         # Draw bounding boxes and text on the image
