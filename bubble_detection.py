@@ -26,7 +26,7 @@ ocr = manga_ocr.MangaOcr(model_path)  # 修改这里
 
 
 def translate_text(text, target_language, model_provider, api_key=None, model_name=None):
-    prompt_content = "你是一个好用的翻译助手。请将我的日文翻译成中文，将所有非中文的翻译成中文。我发给你所有的话都是需要翻译的内容，你只需要回答翻译结果。翻译结果请符合中文的语言习惯。"
+    prompt_content = "你是一个好用的翻译助手。请将我的日文翻译成中文，我发给你所有的话都是需要翻译的内容，你只需要回答翻译结果。特别注意：翻译结果字数不能超过原文字数！翻译结果请符合中文的语言习惯。"
 
     if model_provider == 'siliconflow':
         client = OpenAI(api_key=api_key, base_url="https://api.siliconflow.cn/v1")
@@ -100,7 +100,7 @@ def draw_multiline_text_vertical_right_to_left(draw, text, font, x, y, max_heigh
             current_y += line_height
         current_x -= column_width
 
-def detect_text_in_bubbles(image, target_language='zh', text_direction='vertical', fontSize=30, model_provider='siliconflow', api_key=None, model_name=None):
+def detect_text_in_bubbles(image, target_language='zh', text_direction='vertical', fontSize=30, model_provider='siliconflow', api_key=None, model_name=None, fontFamily="static/STSONG.TTF"):
     """
     Detects text in speech bubbles and draws bounding boxes around them, filling with translated text, 只支持竖向排版，从右向左.
     """
@@ -143,7 +143,7 @@ def detect_text_in_bubbles(image, target_language='zh', text_direction='vertical
         draw = ImageDraw.Draw(img_pil)
 
         # Load font
-        font_path = "static/STXINGKA.TTF"
+        font_path = fontFamily # "static/STXINGKA.TTF"
         font_size = int(fontSize)
         try:
             font = ImageFont.truetype(font_path, font_size, encoding="utf-8")
