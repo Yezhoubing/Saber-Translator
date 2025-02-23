@@ -14,12 +14,17 @@ $(document).ready(function() {
     const resultSection = $("#result-section");
     const translatedImageDisplay = $("#translatedImageDisplay");
     const downloadButton = $("#downloadButton");
+    const downloadAllImagesButton = $("#downloadAllImagesButton"); // 获取按钮引用
     const detectedTextInfo = $("#detectedTextInfo");
     const detectedTextList = $("#detectedTextList");
     const thumbnailList = $("#thumbnailList");
     const modelProviderSelect = $("#modelProvider");
     const modelNameInput = $("#modelName");
     const modelSuggestionsDiv = $("#model-suggestions");
+
+    // 新增：获取提示信息元素引用
+    const translatingMessage = $("#translatingMessage");
+    const downloadingMessage = $("#downloadingMessage");
 
     // 阻止默认拖拽行为
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
@@ -52,7 +57,7 @@ $(document).ready(function() {
     });
 
     // 点击 "点击选择文件" 链接触发文件选择
-    selectFileLink.click(function() {
+    selectFileLink.click(function(e) {
         e.preventDefault();
         imageUploadInput.click();
     });
@@ -62,12 +67,12 @@ $(document).ready(function() {
         handleFiles(this.files);
     });
 
-
     function handleFiles(files) {
         if (files.length > 0) {
             errorMessage.hide();
             resultSection.hide();
             downloadButton.hide();
+            downloadAllImagesButton.hide(); // 隐藏按钮
             detectedTextInfo.hide();
             translateButton.prop('disabled', true);
             translateAllButton.prop('disabled', true);
@@ -78,15 +83,16 @@ $(document).ready(function() {
             thumbnailList.empty();
             currentImageIndex = -1;
 
+           //不再使用promise.all， 使用原生的for循环一个一个判断
             let filesArray = Array.from(files);
-
-            Promise.all(filesArray.map((file, index) => {
-                return new Promise((resolve, reject) => {
+                for (let i = 0; i < filesArray.length; i++) {
+                    const file = filesArray[i];
                     if (file.type.startsWith('image/')) {
+
                         const reader = new FileReader();
                         reader.onload = function(e) {
                             const originalDataURL = e.target.result;
-                            createThumbnail(originalDataURL, file.name, index).then(thumbnailDataURL => {
+                            createThumbnail(originalDataURL, file.name, i).then(thumbnailDataURL => {
                                 images.push({
                                     originalDataURL: originalDataURL,
                                     translatedDataURL: null,
@@ -95,37 +101,88 @@ $(document).ready(function() {
                                     thumbnailDataURL: thumbnailDataURL,
                                     fileName: file.name
                                 });
-                                resolve();
-                            }).catch(reject);
-                        };
-                        reader.onerror = reject;
-                        reader.readAsDataURL(file);
-                    } else {
-                        reject("非图片文件");
-                    }
-                });
-            }))
-            .then(() => {
-                loadingMessage.hide();
-                loadingAnimation.hide();
-                if (images.length > 0) {
-                    translateButton.prop('disabled', false);
-                    translateAllButton.prop('disabled', false);
-                    sortImagesByName();
-                    renderThumbnails();
-                    switchImage(0);
-                } else {
-                    errorMessage.text("没有选择任何图片或图片格式不正确").show();
-                }
-            })
-            .catch(error => {
-                loadingMessage.hide();
-                loadingAnimation.hide();
-                console.error("文件处理错误:", error);
-                errorMessage.text("图片加载失败，请检查文件格式或重试").show();
-            });
+                                 if (i === filesArray.length - 1) {
+                                    //图片是最后一张图片
+                                    finishHandleFiles();
 
-        }
+                                }
+                            }).catch(error =>{
+                                errorMessage.text("图片加载失败，请检查文件格式或重试").show();
+                                return;
+                            });
+                        };
+                        reader.onerror = function(){
+                            errorMessage.text("图片加载失败，请检查文件格式或重试").show();
+                            return;
+                        };
+                        reader.readAsDataURL(file);
+                         console.log("是图片");
+                    } else if (file.type === 'application/pdf') {
+                         const formData = new FormData(); // 创建 FormData 对象
+                         formData.append('pdfFile', file); // 添加 PDF 文件到 FormData
+                         $.ajax({
+                            url: '/upload_pdf',
+                            type: 'POST',
+                            data: formData,
+                            contentType: false,
+                            processData: false,
+                            dataType: 'json',
+                            success: function(response) {
+                                 if (response.images && response.images.length > 0) {
+                                      let imagesArray = response.images
+
+                                     Promise.all(imagesArray.map((imageData, index) => {
+                                            return new Promise((resolve, reject) => {
+                                                const originalDataURL = "data:image/png;base64," + imageData;
+                                                createThumbnail(originalDataURL, "PDF图片" + index, index).then(thumbnailDataURL => {
+                                                    images.push({
+                                                        originalDataURL: originalDataURL,
+                                                        translatedDataURL: null,
+                                                        bubbleTexts: [],
+                                                        bubbleCoords: [],
+                                                        thumbnailDataURL: thumbnailDataURL,
+                                                        fileName: "PDF图片" + index
+                                                    });
+                                                      resolve();
+                                                }).catch(reject);
+                                            });
+                                        }))
+                                        .then(() => {
+                                             if (i === filesArray.length - 1) {
+                                                //pdf是最后一张
+                                                finishHandleFiles();
+                                            }
+                                        })
+
+                                } else {
+                                     errorMessage.text("PDF中没有图片").show();
+                                }
+
+                            },
+                            error: function(error) {
+                                console.error("上传 PDF 文件失败:", error);
+                                errorMessage.text("上传 PDF 文件失败，请检查文件格式或重试").show();
+                            }
+                        });
+                    }
+                     else {
+                            errorMessage.text("请选择图片或PDF文件").show();
+                            return;
+                     }
+
+                }
+
+    }
+}
+// 提取共有代码，处理最后一步图片显示
+    function finishHandleFiles() {
+        loadingMessage.hide();
+        loadingAnimation.hide();
+        translateButton.prop('disabled', false);
+        translateAllButton.prop('disabled', false);
+        sortImagesByName();
+        renderThumbnails();
+        switchImage(0);
     }
 
     function sortImagesByName() {
@@ -194,6 +251,7 @@ $(document).ready(function() {
             translatedImageDisplay.attr('src', images[index].translatedDataURL || images[index].originalDataURL).show();
             resultSection.toggle(images[index].translatedDataURL !== null);
             downloadButton.toggle(images[index].translatedDataURL !== null);
+            downloadAllImagesButton.toggle(images.some(img => img.translatedDataURL !== null)); // 显示/隐藏下载所有图片按钮
             detectedTextInfo.toggle(images[index].bubbleTexts.length > 0 && images[index].translatedDataURL !== null);
             detectedTextList.text(images[index].bubbleTexts.join("\n"));
 
@@ -237,11 +295,15 @@ $(document).ready(function() {
             return;
         }
 
-        loadingMessage.show();
-        loadingAnimation.show();
+        // 显示 "翻译中..." 提示
+        translatingMessage.show();
+
+        loadingMessage.hide();
+        loadingAnimation.hide();
         errorMessage.hide();
-        resultSection.hide();
+        resultSection.show();
         downloadButton.hide();
+        downloadAllImagesButton.hide(); // 隐藏按钮
         detectedTextInfo.hide();
 
         const targetLanguage = $("#targetLanguage").val();
@@ -250,7 +312,7 @@ $(document).ready(function() {
         const fontSize = $("#fontSize").val();
         const modelProvider = $("#modelProvider").val();
         const imageData = images[currentImageIndex].originalDataURL.split(',')[1];
-
+        const fontFamily = $("#fontFamily").val(); // 获取字体路径
 
         $.ajax({
             type: 'POST',
@@ -262,7 +324,8 @@ $(document).ready(function() {
                 fontSize: fontSize,
                 model_provider: modelProvider,
                 api_key: apiKey,
-                model_name: modelName
+                model_name: modelName,
+                fontFamily: fontFamily // 传递字体路径
             }),
             contentType: 'application/json',
             success: function(response) {
@@ -292,6 +355,8 @@ $(document).ready(function() {
                     }
                 });
 
+                // 隐藏 "翻译中..." 提示
+                translatingMessage.hide();
 
             },
             error: function(error) {
@@ -299,6 +364,7 @@ $(document).ready(function() {
                 loadingAnimation.hide();
                 resultSection.hide();
                 downloadButton.hide();
+                downloadAllImagesButton.hide(); // 隐藏按钮
                 detectedTextInfo.hide();
 
                 console.error('Error:', error);
@@ -307,6 +373,8 @@ $(document).ready(function() {
                 } else {
                     errorMessage.text("处理出错，请查看控制台。").show();
                 }
+                // 隐藏 "翻译中..." 提示
+                translatingMessage.hide();
             }
         });
     });
@@ -320,11 +388,15 @@ $(document).ready(function() {
     });
 
     function translateAllImages() {
-        loadingMessage.show();
-        loadingAnimation.show();
+        // 显示 "翻译中..." 提示
+        translatingMessage.show();
+
+        loadingMessage.hide();
+        loadingAnimation.hide();
         errorMessage.hide();
-        resultSection.hide();
+        resultSection.show();
         downloadButton.hide();
+        downloadAllImagesButton.hide(); // 隐藏按钮
         detectedTextInfo.hide();
         translateButton.prop('disabled', true);
         translateAllButton.prop('disabled', true);
@@ -334,6 +406,7 @@ $(document).ready(function() {
         const modelName = $("#modelName").val();
         const fontSize = $("#fontSize").val();
         const modelProvider = $("#modelProvider").val();
+        const fontFamily = $("#fontFamily").val(); // 获取字体路径
 
         Promise.all(images.map((imageData, index) => {
             return new Promise((resolve, reject) => {
@@ -344,7 +417,8 @@ $(document).ready(function() {
                     fontSize: fontSize,
                     model_provider: modelProvider,
                     api_key: apiKey,
-                    model_name: modelName
+                    model_name: modelName,
+                    fontFamily: fontFamily // 传递字体路径
                 };
 
                 $.ajax({
@@ -378,9 +452,39 @@ $(document).ready(function() {
             }
 
             alert("所有图片翻译完成 (部分图片可能翻译失败，请查看控制台)");
+
+            // 隐藏 "翻译中..." 提示
+            translatingMessage.hide();
         });
     }
 
+    // 下载所有图片按钮点击事件
+    downloadAllImagesButton.click(function() {
+        // 显示 "下载中..." 提示
+        downloadingMessage.show();
+
+        const zip = new JSZip();
+        images.forEach(imageData => {
+            if (imageData.translatedDataURL) {
+                const dataURL = imageData.translatedDataURL;
+                const base64Image = dataURL.split(',')[1];
+                zip.file(imageData.fileName.replace(/\..+$/, '') + '_translated.png', base64Image, {base64: true});
+            }
+        });
+
+        zip.generateAsync({type:"blob"})
+            .then(function(content) {
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(content);
+                a.download = "translated_images.zip";
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                // 隐藏 "下载中..." 提示
+                downloadingMessage.hide();
+            });
+    });
 
     downloadButton.click(function() {
         if (currentImageIndex !== -1 && images[currentImageIndex].translatedDataURL) {
