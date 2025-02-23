@@ -209,7 +209,14 @@ aside {
     overflow-x: auto;
 }
 
-#image-display-area #result-section button#downloadButton {
+#image-display-area #result-section .download-buttons {
+    display: flex;
+    justify-content: center; /* 水平居中 */
+    gap: 10px; /* 按钮之间的间距 */
+    margin-top: 20px;
+}
+
+#image-display-area #result-section .download-buttons button {
     display: none;
     padding: 12px 25px;
     background-color: #3498db;
@@ -222,7 +229,7 @@ aside {
     transition: background-color 0.3s;
 }
 
-#image-display-area #result-section button#downloadButton:hover {
+#image-display-area #result-section .download-buttons button:hover {
     background-color: #2980b9;
 }
 
@@ -348,3 +355,18 @@ footer {
     background-color: #eee;
 }
 
+#result-section p#translatingMessage {
+    margin-top: 10px;
+    font-style: italic;
+    color: #777;
+    text-align: center; /* 居中显示 */
+    display: none;
+}
+
+#result-section p#downloadingMessage {
+    margin-top: 10px;
+    font-style: italic;
+    color: #777;
+    text-align: center; /* 居中显示 */
+    display: none;
+}
