@@ -9,12 +9,19 @@ import webbrowser
 import threading
 from openai import OpenAI
 import json
+import PyPDF2  # 导入 PyPDF2 库
+from flask_cors import CORS
 
 app = Flask(__name__, template_folder='templates', static_folder='static', static_url_path='')
+CORS(app)
 
 # 定义模型信息文件名
 MODEL_INFO_FILE = 'model_info.json'
 MAX_MODEL_HISTORY = 5  # 定义每个服务商最多保存的模型历史数量
+
+UPLOAD_FOLDER = 'uploads'  # 定义上传文件夹
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)  # 确保上传文件夹存在
 
 def open_browser():
     """在应用启动后自动打开浏览器访问指定URL"""
@@ -38,8 +45,9 @@ def translate_image():
         api_key = data.get('api_key')
         model_name = data.get('model_name')
         model_provider = data.get('model_provider')
+        fontFamily = data.get('fontFamily') # 获取字体路径
 
-        if not all([image_data, target_language, text_direction, fontSize_str, api_key, model_name, model_provider]):
+        if not all([image_data, target_language, text_direction, fontSize_str, api_key, model_name, model_provider, fontFamily]):
             return jsonify({'error': '缺少必要的参数'}), 400
 
         try:
@@ -57,7 +65,8 @@ def translate_image():
             fontSize,
             model_provider,
             api_key=api_key,
-            model_name=model_name
+            model_name=model_name,
+            fontFamily=fontFamily # 传递字体路径
         )
 
         # 将PIL图像转换为Base64字符串
@@ -142,9 +151,76 @@ def route_save_model_info():
     save_model_info(model_provider, model_name)
     return jsonify({'message': '模型信息保存成功'})
 
+def pdf_to_images(pdf_file):
+    """将 PDF 文件转换为图像列表"""
+    images = []
+    try:
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        for page_num in range(len(pdf_reader.pages)):
+            page = pdf_reader.pages[page_num]
+            if '/Resources' in page and '/XObject' in page['/Resources']:  # 确保存在 /Resources 和 /XObject
+                xObject = page['/Resources']['/XObject'].get_object()
+
+                for obj in xObject:
+                    if xObject[obj]['/Subtype'] == '/Image':
+                        try:
+                            size = (xObject[obj]['/Width'], xObject[obj]['/Height'])
+                            data = xObject[obj].get_data()
+                            if xObject[obj]['/ColorSpace'] == '/DeviceRGB':
+                                mode = "RGB"
+                            else:
+                                mode = "P"
+
+                            if '/Filter' in xObject[obj]:
+                                if xObject[obj]['/Filter'] == '/FlateDecode':
+                                    img = Image.frombytes(mode, size, data)
+                                    images.append(img)
+                                elif xObject[obj]['/Filter'] == '/DCTDecode':
+                                    img = Image.open(io.BytesIO(data))
+                                    images.append(img)
+                                else:
+                                    print("Unknown filter, skipping")
+                            else:
+                                img = Image.frombytes(mode, size, data)
+                                images.append(img)
+                        except Exception as image_e:
+                            print(f"提取图片失败，页面 {page_num + 1}, 对象 {obj}: {image_e}")  # 打印图片提取失败的详细信息
+        return images
+    except Exception as e:
+        print(f"PDF 转换失败: {e}")
+        return []
+
+@app.route('/upload_pdf', methods=['POST'])
+def upload_pdf():
+    """处理 PDF 文件上传的路由"""
+    if 'pdfFile' not in request.files:
+        return jsonify({'error': '没有上传文件'}), 400
+
+    pdf_file = request.files['pdfFile']
+    if pdf_file.filename == '':
+        return jsonify({'error': '文件名为空'}), 400
+
+    if pdf_file:
+        try:
+            images = pdf_to_images(pdf_file.stream)
+            image_data_list = []
+            for i, image in enumerate(images):
+                try:
+                    buffered = io.BytesIO()
+                    image.save(buffered, format="PNG")
+                    img_str = base64.b64encode(buffered.getvalue()).decode('utf-8')
+                    image_data_list.append(img_str)
+                except Exception as save_e:
+                    print(f"保存图片失败，跳过图片{i+1}: {save_e}") # 打印图片保存失败的详细信息
+
+            return jsonify({'images': image_data_list}), 200
+        except Exception as e:
+            print(f"处理 PDF 文件时出错: {e}")
+            return jsonify({'error': f"处理 PDF 文件时出错: {e}"}), 500
+
+    return jsonify({'error': '上传失败'}), 500
 
 if __name__ == '__main__':
     threading.Timer(1, open_browser).start()
     print("程序正在运行，请在浏览器中访问 http://127.0.0.1:5000/")
     app.run(debug=True, use_reloader=False)
-
