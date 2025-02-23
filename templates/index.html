@@ -3,6 +3,8 @@
 <head>
     <title>AI 漫画翻译</title>
     <link rel="stylesheet" type="text/css" href="style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
 </head>
 <body>
     <div class="container">
@@ -18,7 +20,22 @@
                     </div>
                     <div>
                         <label for="fontSize">字号大小:</label>
-                        <input type="number" id="fontSize" value="30" min="10" max="100">
+                        <input type="number" id="fontSize" value="25" min="10" max="100">
+                    </div>
+                    <div>
+                        <label for="fontFamily">字体:</label>
+                        <select id="fontFamily">
+                            <option value="static/STXINGKA.TTF">华文行楷</option>
+                            <option value="static/STXINWEI.TTF">华文新魏</option>
+                            <option value="static/STZHONGS.TTF">华文中宋</option>
+                            <option value="static/STKAITI.TTF">楷体</option>
+                            <option value="static/STLITI.TTF">隶书</option>
+                            <option value="static/STSONG.TTF" selected>宋体</option>
+                            <option value="static/MSYH.TTC">微软雅黑</option>
+                            <option value="static/MSYHBD.TTC">微软雅黑粗体</option>
+                            <option value="static/SIMYOU.TTF">幼圆</option>
+                            <option value="static/STFANGSO.TTF">仿宋</option>
+                        </select>
                     </div>
                     <div>
                         <label for="modelProvider">翻译服务商:</label>
@@ -53,8 +70,8 @@
         <main id="image-display-area">
             <section id="upload-section" class="card upload-card">
                 <div id="drop-area">
-                    <p>拖拽图片到这里，或 <span id="select-file-link" style="color: blue; cursor: pointer; text-decoration: underline;">点击选择文件</span></p>
-                    <input type="file" id="imageUpload" accept="image/*" multiple style="display: none;">
+                    <p>拖拽图片或PDF文件到这里，或 <span id="select-file-link" style="color: blue; cursor: pointer; text-decoration: underline;">点击选择文件</span></p>
+                    <input type="file" id="imageUpload" accept="image/*, application/pdf" multiple style="display: none;">
                 </div>
                 <p id="loadingMessage" style="display: none;">处理中，请稍候...</p>
                 <div id="loadingAnimation" class="loader" style="display: none;"></div>
@@ -66,7 +83,12 @@
                     <h3>检测到的文本</h3>
                     <pre id="detectedTextList"></pre>
                 </div>
-                <button id="downloadButton" style="display: none;">下载翻译后图片</button>
+                <p id="translatingMessage" style="display: none;">翻译中，请稍候...</p>
+                <p id="downloadingMessage" style="display: none;">下载中，请稍候...</p>
+                <div class="download-buttons">
+                    <button id="downloadButton" style="display: none;">下载翻译后图片</button>
+                    <button id="downloadAllImagesButton" style="display: none;">下载所有翻译后图片</button>
+                </div>
             </section>
         </main>
 
@@ -84,4 +106,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
