@@ -53,16 +53,31 @@
                         <label for="modelName">大模型型号:</label>
                         <input type="text" id="modelName" placeholder="请输入模型型号">
                         <div id="model-suggestions">
-                            <!-- 模型建议列表将在此处动态生成 -->
                         </div>
                         <p class="input-hint">例如 gpt-3.5-turbo, deepseek-chat</p>
                     </div>
-                    <button id="translateButton" disabled>翻译当前图片</button>
-                    <button id="translateAllButton" disabled>翻译所有图片</button>
-                    <div class="navigation-buttons">
-                        <button id="prevImageButton" disabled>上一张</button>
-                        <button id="nextImageButton" disabled>下一张</button>
+                </div>
+                <div id="prompt-settings" class="settings-card">
+                    <h3>提示词设置</h3>
+                    <textarea id="promptContent" placeholder="在这里修改提示词"></textarea>
+                    <div class="prompt-management">
+                        <label for="rememberPrompt"><input type="checkbox" id="rememberPrompt">记住提示词</label>
+                        <input type="text" id="promptName" placeholder="提示词名称">
                     </div>
+                    <button id="savePromptButton">应用提示词</button>
+                    <div id="prompt-dropdown-container">
+                        <button id="promptDropdownButton" style="display: none;">已保存提示词 <span style="margin-left: 5px;">▼</span></button>
+                        <div id="promptDropdown">
+                        </div>
+                    </div>
+                </div>
+                <button id="translateButton" disabled>翻译当前图片</button>
+                <button id="translateAllButton" disabled>翻译所有图片</button>
+                <button id="clearAllImagesButton" class="settings-button red-button">清除所有图片</button>
+                <button id="deleteCurrentImageButton" class="settings-button red-button" disabled>删除当前图片</button>
+                <div class="navigation-buttons">
+                    <button id="prevImageButton" disabled>上一张</button>
+                    <button id="nextImageButton" disabled>下一张</button>
                 </div>
             </div>
         </aside>
@@ -96,7 +111,6 @@
             <div class="card thumbnail-card">
                 <h2>图片概览</h2>
                 <ul id="thumbnailList">
-                    <!-- 缩略图列表将在此处动态生成 -->
                 </ul>
             </div>
         </aside>
