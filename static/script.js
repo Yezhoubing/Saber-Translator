@@ -14,19 +14,168 @@ $(document).ready(function() {
     const resultSection = $("#result-section");
     const translatedImageDisplay = $("#translatedImageDisplay");
     const downloadButton = $("#downloadButton");
-    const downloadAllImagesButton = $("#downloadAllImagesButton"); // 获取按钮引用
+    const downloadAllImagesButton = $("#downloadAllImagesButton");
     const detectedTextInfo = $("#detectedTextInfo");
     const detectedTextList = $("#detectedTextList");
     const thumbnailList = $("#thumbnailList");
     const modelProviderSelect = $("#modelProvider");
     const modelNameInput = $("#modelName");
     const modelSuggestionsDiv = $("#model-suggestions");
-
-    // 新增：获取提示信息元素引用
     const translatingMessage = $("#translatingMessage");
     const downloadingMessage = $("#downloadingMessage");
+    const fontSizeInput = $("#fontSize");
+    const fontFamilySelect = $("#fontFamily");
+    const clearAllImagesButton = $("#clearAllImagesButton");
+    const deleteCurrentImageButton = $("#deleteCurrentImageButton");
 
-    // 阻止默认拖拽行为
+    const defaultFontSize = fontSizeInput.val();
+    const defaultFontFamily = fontFamilySelect.val();
+
+    const promptContentTextarea = $("#promptContent");
+    const savePromptButton = $("#savePromptButton");
+    const rememberPromptCheckbox = $("#rememberPrompt");
+    const promptNameInput = $("#promptName");
+    const promptDropdownButton = $("#promptDropdownButton");
+    const promptDropdown = $("#promptDropdown");
+
+    let currentPromptContent = "";
+    let defaultPromptContent = "";
+    let savedPromptNames = [];
+
+    function initializePromptSettings() {
+        $.ajax({
+            url: '/get_prompts',
+            type: 'GET',
+            dataType: 'json',
+            success: function(response) {
+                defaultPromptContent = response.default_prompt_content;
+                currentPromptContent = defaultPromptContent;
+                promptContentTextarea.val(currentPromptContent);
+                savedPromptNames = response.prompt_names || [];
+                populatePromptDropdown(savedPromptNames);
+            },
+            error: function(error) {
+                console.error("获取提示词信息失败:", error);
+                defaultPromptContent = "获取默认提示词失败，请检查后端";
+                currentPromptContent = defaultPromptContent;
+                promptContentTextarea.val(currentPromptContent);
+            }
+        });
+    }
+
+    initializePromptSettings();
+
+
+    function populatePromptDropdown(promptNames) {
+        promptDropdown.empty();
+        if (promptNames && promptNames.length > 0) {
+            const ul = $("<ul></ul>");
+            promptNames.forEach(function(name) {
+                const li = $("<li></li>").text(name).click(function() {
+                    loadPromptContent(name);
+                    promptDropdown.hide();
+                });
+
+                const deleteButton = $('<span class="delete-prompt-button">&times;</span>');
+                deleteButton.click(function(e) {
+                    e.stopPropagation();
+                    deletePrompt(name);
+                });
+                li.append(deleteButton);
+                ul.append(li);
+            });
+            promptDropdown.append(ul);
+            promptDropdownButton.show();
+        } else {
+            promptDropdownButton.hide();
+        }
+    }
+
+    function deletePrompt(promptName) {
+        $.ajax({
+            url: '/delete_prompt',
+            type: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ prompt_name: promptName }),
+            success: function(response) {
+                alert("提示词 '" + promptName + "' 删除成功！");
+                initializePromptSettings();
+            },
+            error: function(error) {
+                console.error("删除提示词失败:", error);
+                alert("删除提示词失败，请重试。");
+            }
+        });
+    }
+
+
+    function loadPromptContent(promptName) {
+        if (promptName === "默认提示词") {
+            currentPromptContent = defaultPromptContent;
+            promptContentTextarea.val(currentPromptContent);
+        } else {
+            $.ajax({
+                url: '/get_prompt_content',
+                type: 'GET',
+                data: { prompt_name: promptName },
+                dataType: 'json',
+                success: function(response) {
+                    currentPromptContent = response.prompt_content;
+                    promptContentTextarea.val(currentPromptContent);
+                },
+                error: function(error) {
+                    console.error("加载提示词内容失败:", error);
+                    alert("加载提示词内容失败");
+                }
+            });
+        }
+    }
+
+
+    savePromptButton.click(function() {
+        const promptName = promptNameInput.val();
+        const promptContent = promptContentTextarea.val();
+
+        if (rememberPromptCheckbox.is(':checked')) {
+            if (!promptName) {
+                alert("请为要保存的提示词输入名称。");
+                return;
+            }
+            $.ajax({
+                url: '/save_prompt',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ prompt_name: promptName, prompt_content: promptContent }),
+                success: function(response) {
+                    alert("提示词保存成功！");
+                    initializePromptSettings();
+                },
+                error: function(error) {
+                    console.error("保存提示词失败:", error);
+                    alert("保存提示词失败，请重试。");
+                }
+            });
+        } else {
+            alert("提示词已应用，但未保存。下次启动程序将使用默认提示词。");
+            currentPromptContent = promptContent;
+        }
+    });
+
+    rememberPromptCheckbox.change(function() {
+        promptNameInput.toggle(this.checked);
+    });
+    promptNameInput.hide();
+
+    promptDropdownButton.click(function(e) {
+        promptDropdown.toggle();
+        e.stopPropagation();
+    });
+
+    $(document).click(function() {
+        promptDropdown.hide();
+    });
+
+
     ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
         dropArea.on(eventName, function(e) {
             e.preventDefault();
@@ -34,7 +183,6 @@ $(document).ready(function() {
         });
     });
 
-    // 高亮显示拖拽区域
     ['dragenter', 'dragover'].forEach(eventName => {
         dropArea.on(eventName, function() {
             dropArea.addClass('highlight');
@@ -47,7 +195,6 @@ $(document).ready(function() {
         });
     });
 
-    // 处理拖拽上传
     dropArea.on('drop', function(e) {
         e.preventDefault();
         e.stopPropagation();
@@ -56,7 +203,6 @@ $(document).ready(function() {
         handleFiles(files);
     });
 
-    // 点击 "点击选择文件" 链接触发文件选择
     selectFileLink.click(function(e) {
         e.preventDefault();
         imageUploadInput.click();
@@ -72,55 +218,49 @@ $(document).ready(function() {
             errorMessage.hide();
             resultSection.hide();
             downloadButton.hide();
-            downloadAllImagesButton.hide(); // 隐藏按钮
+            downloadAllImagesButton.hide();
             detectedTextInfo.hide();
             translateButton.prop('disabled', true);
             translateAllButton.prop('disabled', true);
             prevImageButton.prop('disabled', true);
             nextImageButton.prop('disabled', true);
+            deleteCurrentImageButton.prop('disabled', true);
 
-            images = [];
-            thumbnailList.empty();
             currentImageIndex = -1;
-
-           //不再使用promise.all， 使用原生的for循环一个一个判断
             let filesArray = Array.from(files);
-                for (let i = 0; i < filesArray.length; i++) {
-                    const file = filesArray[i];
-                    if (file.type.startsWith('image/')) {
+            const filePromises = [];
 
+            for (let i = 0; i < filesArray.length; i++) {
+                const file = filesArray[i];
+                if (file.type.startsWith('image/')) {
+                    const filePromise = new Promise((resolve, reject) => {
                         const reader = new FileReader();
                         reader.onload = function(e) {
                             const originalDataURL = e.target.result;
-                            createThumbnail(originalDataURL, file.name, i).then(thumbnailDataURL => {
+                            createThumbnail(originalDataURL, file.name, images.length + i).then(thumbnailDataURL => {
                                 images.push({
                                     originalDataURL: originalDataURL,
                                     translatedDataURL: null,
                                     bubbleTexts: [],
                                     bubbleCoords: [],
                                     thumbnailDataURL: thumbnailDataURL,
-                                    fileName: file.name
+                                    fileName: file.name,
+                                    fontSize: defaultFontSize,
+                                    fontFamily: defaultFontFamily
                                 });
-                                 if (i === filesArray.length - 1) {
-                                    //图片是最后一张图片
-                                    finishHandleFiles();
-
-                                }
-                            }).catch(error =>{
-                                errorMessage.text("图片加载失败，请检查文件格式或重试").show();
-                                return;
-                            });
+                                resolve();
+                            }).catch(reject);
                         };
-                        reader.onerror = function(){
-                            errorMessage.text("图片加载失败，请检查文件格式或重试").show();
-                            return;
-                        };
+                        reader.onerror = reject;
                         reader.readAsDataURL(file);
-                         console.log("是图片");
-                    } else if (file.type === 'application/pdf') {
-                         const formData = new FormData(); // 创建 FormData 对象
-                         formData.append('pdfFile', file); // 添加 PDF 文件到 FormData
-                         $.ajax({
+                    });
+                    filePromises.push(filePromise);
+
+                } else if (file.type === 'application/pdf') {
+                    const filePromise = new Promise((resolve, reject) => {
+                        const formData = new FormData();
+                        formData.append('pdfFile', file);
+                        $.ajax({
                             url: '/upload_pdf',
                             type: 'POST',
                             data: formData,
@@ -128,61 +268,71 @@ $(document).ready(function() {
                             processData: false,
                             dataType: 'json',
                             success: function(response) {
-                                 if (response.images && response.images.length > 0) {
-                                      let imagesArray = response.images
-
-                                     Promise.all(imagesArray.map((imageData, index) => {
-                                            return new Promise((resolve, reject) => {
-                                                const originalDataURL = "data:image/png;base64," + imageData;
-                                                createThumbnail(originalDataURL, "PDF图片" + index, index).then(thumbnailDataURL => {
-                                                    images.push({
-                                                        originalDataURL: originalDataURL,
-                                                        translatedDataURL: null,
-                                                        bubbleTexts: [],
-                                                        bubbleCoords: [],
-                                                        thumbnailDataURL: thumbnailDataURL,
-                                                        fileName: "PDF图片" + index
-                                                    });
-                                                      resolve();
-                                                }).catch(reject);
-                                            });
-                                        }))
-                                        .then(() => {
-                                             if (i === filesArray.length - 1) {
-                                                //pdf是最后一张
-                                                finishHandleFiles();
-                                            }
-                                        })
-
+                                if (response.images && response.images.length > 0) {
+                                    const pdfImagePromises = [];
+                                    response.images.forEach((imageData, index) => {
+                                        const pdfImagePromise = new Promise((resolveThumbnail, rejectThumbnail) => {
+                                            const originalDataURL = "data:image/png;base64," + imageData;
+                                            createThumbnail(originalDataURL, "PDF图片" + (images.length + index), images.length + index).then(thumbnailDataURL => {
+                                                images.push({
+                                                    originalDataURL: originalDataURL,
+                                                    translatedDataURL: null,
+                                                    bubbleTexts: [],
+                                                    bubbleCoords: [],
+                                                    thumbnailDataURL: thumbnailDataURL,
+                                                    fileName: "PDF图片" + (images.length + index),
+                                                    fontSize: defaultFontSize,
+                                                    fontFamily: defaultFontFamily
+                                                });
+                                                resolveThumbnail();
+                                            }).catch(rejectThumbnail);
+                                        });
+                                        pdfImagePromises.push(pdfImagePromises);
+                                    });
+                                    Promise.all(pdfImagePromises).then(resolve).catch(reject);
                                 } else {
-                                     errorMessage.text("PDF中没有图片").show();
+                                    errorMessage.text("PDF中没有图片").show();
+                                    resolve();
                                 }
-
                             },
                             error: function(error) {
                                 console.error("上传 PDF 文件失败:", error);
                                 errorMessage.text("上传 PDF 文件失败，请检查文件格式或重试").show();
+                                reject(error);
                             }
                         });
-                    }
-                     else {
-                            errorMessage.text("请选择图片或PDF文件").show();
-                            return;
-                     }
-
+                    });
+                    filePromises.push(filePromise);
+                } else {
+                    errorMessage.text("请选择图片或PDF文件").show();
+                    filePromises.push(Promise.resolve());
                 }
+            }
 
+            Promise.all(filePromises)
+                .then(() => {
+                    finishHandleFiles();
+                })
+                .catch(error => {
+                    console.error("文件处理过程中发生错误:", error);
+                });
+
+        }
     }
-}
-// 提取共有代码，处理最后一步图片显示
+
     function finishHandleFiles() {
         loadingMessage.hide();
         loadingAnimation.hide();
         translateButton.prop('disabled', false);
         translateAllButton.prop('disabled', false);
+        deleteCurrentImageButton.prop('disabled', false);
         sortImagesByName();
         renderThumbnails();
-        switchImage(0);
+        if (images.length > 0 && currentImageIndex === -1) {
+            switchImage(0);
+        } else if (currentImageIndex !== -1) {
+            switchImage(currentImageIndex);
+        }
     }
 
     function sortImagesByName() {
@@ -251,14 +401,21 @@ $(document).ready(function() {
             translatedImageDisplay.attr('src', images[index].translatedDataURL || images[index].originalDataURL).show();
             resultSection.toggle(images[index].translatedDataURL !== null);
             downloadButton.toggle(images[index].translatedDataURL !== null);
-            downloadAllImagesButton.toggle(images.some(img => img.translatedDataURL !== null)); // 显示/隐藏下载所有图片按钮
+            downloadAllImagesButton.toggle(images.some(img => img.translatedDataURL !== null));
             detectedTextInfo.toggle(images[index].bubbleTexts.length > 0 && images[index].translatedDataURL !== null);
             detectedTextList.text(images[index].bubbleTexts.join("\n"));
 
             $("#thumbnailList li").removeClass('active');
             $("#thumbnailList li").eq(index).addClass('active');
 
+            fontSizeInput.val(images[index].fontSize);
+            fontFamilySelect.val(images[index].fontFamily);
+            deleteCurrentImageButton.prop('disabled', false);
+
+
             updateNavigationButtons();
+        } else {
+            deleteCurrentImageButton.prop('disabled', true);
         }
     }
 
@@ -273,7 +430,58 @@ $(document).ready(function() {
         }
     }
 
-    // "上一张" 按钮点击事件
+    function reRenderTranslatedImage(fontSize, fontFamily) {
+        if (currentImageIndex === -1 || !images[currentImageIndex].translatedDataURL || !images[currentImageIndex].bubbleTexts || !images[currentImageIndex].bubbleCoords) {
+            return;
+        }
+
+        const imageData = images[currentImageIndex].originalDataURL.split(',')[1]; // Use original image for re-rendering
+        const translatedText = images[currentImageIndex].bubbleTexts;
+        const bubbleCoords = images[currentImageIndex].bubbleCoords;
+
+
+        $.ajax({
+            type: 'POST',
+            url: '/re_render_image',
+            data: JSON.stringify({
+                image: imageData,
+                translated_text: translatedText,
+                bubble_coords: bubbleCoords,
+                fontSize: fontSize,
+                fontFamily: fontFamily
+            }),
+            contentType: 'application/json',
+            success: function(response) {
+                images[currentImageIndex].translatedDataURL = 'data:image/png;base64,' + response.rendered_image;
+                images[currentImageIndex].fontSize = fontSize;
+                images[currentImageIndex].fontFamily = fontFamily;
+                switchImage(currentImageIndex);
+            },
+            error: function(error) {
+                console.error('Error re-rendering image:', error);
+                errorMessage.text("重新渲染图片出错，请查看控制台。").show();
+            }
+        });
+    }
+
+
+    fontSizeInput.on('change', function() {
+        const newFontSize = fontSizeInput.val();
+        if (currentImageIndex !== -1 && images[currentImageIndex].translatedDataURL) {
+            images[currentImageIndex].fontSize = newFontSize;
+            reRenderTranslatedImage(newFontSize, fontFamilySelect.val());
+        }
+    });
+
+    fontFamilySelect.on('change', function() {
+        const newFontFamily = fontFamilySelect.val();
+        if (currentImageIndex !== -1 && images[currentImageIndex].translatedDataURL) {
+            images[currentImageIndex].fontFamily = newFontFamily;
+            reRenderTranslatedImage(fontSizeInput.val(), newFontFamily);
+        }
+    });
+
+
     prevImageButton.click(function() {
         console.log("prevImageButton clicked, currentImageIndex before:", currentImageIndex);
         if (currentImageIndex > 0) {
@@ -281,7 +489,6 @@ $(document).ready(function() {
         }
     });
 
-    // "下一张" 按钮点击事件
     nextImageButton.click(function() {
         console.log("nextImageButton clicked, currentImageIndex before:", currentImageIndex);
         if (currentImageIndex < images.length - 1) {
@@ -294,8 +501,10 @@ $(document).ready(function() {
             alert("请先选择要翻译的图片");
             return;
         }
+        translateCurrentImage();
+    });
 
-        // 显示 "翻译中..." 提示
+    function translateCurrentImage() {
         translatingMessage.show();
 
         loadingMessage.hide();
@@ -303,16 +512,17 @@ $(document).ready(function() {
         errorMessage.hide();
         resultSection.show();
         downloadButton.hide();
-        downloadAllImagesButton.hide(); // 隐藏按钮
+        downloadAllImagesButton.hide();
         detectedTextInfo.hide();
 
         const targetLanguage = $("#targetLanguage").val();
         const apiKey = $("#apiKey").val();
         const modelName = $("#modelName").val();
-        const fontSize = $("#fontSize").val();
+        const fontSize = fontSizeInput.val();
+        const fontFamily = fontFamilySelect.val();
         const modelProvider = $("#modelProvider").val();
         const imageData = images[currentImageIndex].originalDataURL.split(',')[1];
-        const fontFamily = $("#fontFamily").val(); // 获取字体路径
+        const promptContent = currentPromptContent;
 
         $.ajax({
             type: 'POST',
@@ -325,7 +535,8 @@ $(document).ready(function() {
                 model_provider: modelProvider,
                 api_key: apiKey,
                 model_name: modelName,
-                fontFamily: fontFamily // 传递字体路径
+                fontFamily: fontFamily,
+                prompt_content: promptContent
             }),
             contentType: 'application/json',
             success: function(response) {
@@ -334,10 +545,12 @@ $(document).ready(function() {
                 images[currentImageIndex].translatedDataURL = 'data:image/png;base64,' + response.translated_image;
                 images[currentImageIndex].bubbleTexts = response.bubble_texts || [];
                 images[currentImageIndex].bubbleCoords = response.bubble_coords || [];
+                images[currentImageIndex].fontSize = fontSize;
+                images[currentImageIndex].fontFamily = fontFamily;
+
 
                 switchImage(currentImageIndex);
 
-                // **保存模型信息到后端**
                 const data = {
                     modelProvider: modelProvider,
                     modelName: modelName
@@ -355,7 +568,6 @@ $(document).ready(function() {
                     }
                 });
 
-                // 隐藏 "翻译中..." 提示
                 translatingMessage.hide();
 
             },
@@ -364,7 +576,7 @@ $(document).ready(function() {
                 loadingAnimation.hide();
                 resultSection.hide();
                 downloadButton.hide();
-                downloadAllImagesButton.hide(); // 隐藏按钮
+                downloadAllImagesButton.hide();
                 detectedTextInfo.hide();
 
                 console.error('Error:', error);
@@ -373,11 +585,11 @@ $(document).ready(function() {
                 } else {
                     errorMessage.text("处理出错，请查看控制台。").show();
                 }
-                // 隐藏 "翻译中..." 提示
                 translatingMessage.hide();
             }
         });
-    });
+    }
+
 
     translateAllButton.click(function() {
         if (images.length === 0) {
@@ -388,7 +600,6 @@ $(document).ready(function() {
     });
 
     function translateAllImages() {
-        // 显示 "翻译中..." 提示
         translatingMessage.show();
 
         loadingMessage.hide();
@@ -396,17 +607,19 @@ $(document).ready(function() {
         errorMessage.hide();
         resultSection.show();
         downloadButton.hide();
-        downloadAllImagesButton.hide(); // 隐藏按钮
+        downloadAllImagesButton.hide();
         detectedTextInfo.hide();
         translateButton.prop('disabled', true);
         translateAllButton.prop('disabled', true);
+        deleteCurrentImageButton.prop('disabled', true);
 
         const targetLanguage = $("#targetLanguage").val();
         const apiKey = $("#apiKey").val();
         const modelName = $("#modelName").val();
-        const fontSize = $("#fontSize").val();
+        const fontSize = fontSizeInput.val();
+        const fontFamily = fontFamilySelect.val();
         const modelProvider = $("#modelProvider").val();
-        const fontFamily = $("#fontFamily").val(); // 获取字体路径
+        const promptContent = currentPromptContent;
 
         Promise.all(images.map((imageData, index) => {
             return new Promise((resolve, reject) => {
@@ -418,7 +631,8 @@ $(document).ready(function() {
                     model_provider: modelProvider,
                     api_key: apiKey,
                     model_name: modelName,
-                    fontFamily: fontFamily // 传递字体路径
+                    fontFamily: fontFamily,
+                    prompt_content: promptContent
                 };
 
                 $.ajax({
@@ -430,6 +644,8 @@ $(document).ready(function() {
                         images[index].translatedDataURL = 'data:image/png;base64,' + response.translated_image;
                         images[index].bubbleTexts = response.bubble_texts || [];
                         images[index].bubbleCoords = response.bubble_coords || [];
+                        images[index].fontSize = fontSize;
+                        images[index].fontFamily = fontFamily;
                         resolve();
                     },
                     error: function(error) {
@@ -444,6 +660,7 @@ $(document).ready(function() {
             loadingAnimation.hide();
             translateButton.prop('disabled', false);
             translateAllButton.prop('disabled', false);
+            deleteCurrentImageButton.prop('disabled', false);
 
             if (currentImageIndex !== -1) {
                 switchImage(currentImageIndex);
@@ -453,14 +670,11 @@ $(document).ready(function() {
 
             alert("所有图片翻译完成 (部分图片可能翻译失败，请查看控制台)");
 
-            // 隐藏 "翻译中..." 提示
             translatingMessage.hide();
         });
     }
 
-    // 下载所有图片按钮点击事件
     downloadAllImagesButton.click(function() {
-        // 显示 "下载中..." 提示
         downloadingMessage.show();
 
         const zip = new JSZip();
@@ -481,7 +695,6 @@ $(document).ready(function() {
                 a.click();
                 document.body.removeChild(a);
 
-                // 隐藏 "下载中..." 提示
                 downloadingMessage.hide();
             });
     });
@@ -500,66 +713,122 @@ $(document).ready(function() {
         }
     });
 
+    clearAllImagesButton.click(function() {
+        images = [];
+        thumbnailList.empty();
+        currentImageIndex = -1;
+        translatedImageDisplay.attr('src', '').hide();
+        resultSection.hide();
+        downloadButton.hide();
+        downloadAllImagesButton.hide();
+        detectedTextInfo.hide();
+        updateNavigationButtons();
+        deleteCurrentImageButton.prop('disabled', true);
+    });
 
-    translateAllButton.prop('disabled', true);
-    prevImageButton.prop('disabled', true);
-    nextImageButton.prop('disabled', true);
-
-    const originalHandleFiles = handleFiles;
-    handleFiles = function(files) {
-        originalHandleFiles(files);
-        translateAllButton.prop('disabled', false);
-    };
-
-
-     // **监听模型型号输入框的 focus 事件**
-    modelNameInput.on('focus', function() {
-        const selectedProvider = modelProviderSelect.val();
-        if (selectedProvider) {
-            $.ajax({
-                url: '/get_used_models',
-                type: 'GET',
-                data: { model_provider: selectedProvider },
-                dataType: 'json',
-                success: function(response) {
-                    modelSuggestionsDiv.empty();
-                    if (response.models && response.models.length > 0) {
-                        const suggestionList = $('<ul></ul>');
-                        response.models.forEach(function(model) {
-                            const listItem = $('<li></li>').text(model).click(function() {
-                                modelNameInput.val(model);
-                                modelSuggestionsDiv.empty();
-                            });
-                            suggestionList.append(listItem);
-                        });
-                        modelSuggestionsDiv.append(suggestionList);
-                    } else {
-                        modelSuggestionsDiv.text("没有历史模型");
-                    }
-                },
-                error: function(error) {
-                    console.error("获取历史模型失败:", error);
-                    modelSuggestionsDiv.text("加载历史模型失败");
+    deleteCurrentImageButton.click(function() {
+        if (currentImageIndex !== -1) {
+            images.splice(currentImageIndex, 1);
+            if (images.length === 0) {
+                currentImageIndex = -1;
+                translatedImageDisplay.attr('src', '').hide();
+                resultSection.hide();
+                downloadButton.hide();
+                downloadAllImagesButton.hide();
+                detectedTextInfo.hide();
+                deleteCurrentImageButton.prop('disabled', true);
+            } else {
+                if (currentImageIndex >= images.length) {
+                    currentImageIndex = images.length - 1;
                 }
-            });
-        } else {
-            modelSuggestionsDiv.empty();
+                switchImage(currentImageIndex);
+            }
+            renderThumbnails();
+            updateNavigationButtons();
         }
     });
 
-     // **页面加载时，从后端获取模型信息 (移除自动填充)**
-    $.ajax({
-        url: '/get_model_info',
-        type: 'GET',
-        dataType: 'json',
-        success: function(response) {
-            if (response && response.modelProvider) {
-                modelProviderSelect.val(response.modelProvider);
-                // 移除自动填充: modelNameInput.val(response.modelName);
+    $(document).keydown(function(event) {
+        if (event.altKey) {
+            switch (event.key) {
+                case 'ArrowUp': 
+                    event.preventDefault(); 
+                    let currentFontSizeUp = parseInt(fontSizeInput.val());
+                    fontSizeInput.val(currentFontSizeUp + 1);
+                    fontSizeInput.trigger('change'); 
+                    break;
+                case 'ArrowDown': 
+                    event.preventDefault(); 
+                    let currentFontSizeDown = parseInt(fontSizeInput.val());
+                    fontSizeInput.val(Math.max(10, currentFontSizeDown - 1)); 
+                    fontSizeInput.trigger('change'); 
+                    break;
+                case 'ArrowLeft': 
+                    event.preventDefault(); 
+                    prevImageButton.click(); 
+                    break;
+                case 'ArrowRight': 
+                    event.preventDefault(); 
+                    nextImageButton.click(); 
+                    break;
             }
-        },
-        error: function(error) {
-            console.error("无法从后端获取模型信息:", error);
         }
     });
+
+
+    function initializeModelSuggestions() {
+        modelProviderSelect.on('change', function() {
+            loadModelSuggestions(this.value);
+        });
+        loadModelSuggestions(modelProviderSelect.val());
+    }
+
+    function loadModelSuggestions(provider) {
+        $.ajax({
+            url: '/get_used_models',
+            type: 'GET',
+            data: { model_provider: provider },
+            dataType: 'json',
+            success: function(response) {
+                populateModelSuggestions(response.models);
+            },
+            error: function(error) {
+                console.error("获取模型建议失败:", error);
+                modelSuggestionsDiv.html('<p>加载模型建议失败</p>');
+            }
+        });
+    }
+
+    function populateModelSuggestions(models) {
+        modelSuggestionsDiv.empty();
+        if (models && models.length > 0) {
+            const ul = $("<ul></ul>");
+            models.forEach(function(modelName) {
+                const li = $("<li></li>").text(modelName).click(function() {
+                    $("#modelName").val(modelName);
+                    modelSuggestionsDiv.empty(); 
+                });
+                ul.append(li);
+            });
+            modelSuggestionsDiv.append(ul);
+        } else {
+            modelSuggestionsDiv.html('<p>暂无模型建议</p>');
+        }
+    }
+
+
+    modelNameInput.on('focus', function() {
+        loadModelSuggestions(modelProviderSelect.val()); 
+    });
+
+    modelNameInput.on('blur', function() {
+        setTimeout(function() {
+            modelSuggestionsDiv.empty(); 
+        }, 200);
+    });
+
+
+    initializeModelSuggestions();
+
+
 });
