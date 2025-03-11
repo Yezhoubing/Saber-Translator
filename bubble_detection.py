@@ -6,7 +6,20 @@ import manga_ocr
 import os
 from openai import OpenAI
 
-model = torch.hub.load('ultralytics/yolov5', 'custom', path="weights/best.pt")
+current_dir = os.path.dirname(os.path.abspath(__file__))
+weights_path = os.path.join(current_dir, "weights", "best.pt")
+
+current_dir = os.path.dirname(os.path.abspath(__file__))  
+
+
+repo_dir = os.path.join(current_dir, "ultralytics_yolov5_master")
+
+
+weights_path = os.path.join(current_dir, "weights", "best.pt") 
+
+model = torch.hub.load(repo_or_dir=repo_dir, source='local', model='custom', path=weights_path)
+
+
 model.conf = 0.6
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
