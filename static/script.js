@@ -27,6 +27,8 @@ $(document).ready(function() {
     const fontFamilySelect = $("#fontFamily");
     const clearAllImagesButton = $("#clearAllImagesButton");
     const deleteCurrentImageButton = $("#deleteCurrentImageButton");
+    const applyFontSettingsToAllButton = $("#applyFontSettingsToAllButton");
+    const layoutDirectionSelect = $("#layoutDirection");
 
     const defaultFontSize = fontSizeInput.val();
     const defaultFontFamily = fontFamilySelect.val();
@@ -237,19 +239,26 @@ $(document).ready(function() {
                         const reader = new FileReader();
                         reader.onload = function(e) {
                             const originalDataURL = e.target.result;
-                            createThumbnail(originalDataURL, file.name, images.length + i).then(thumbnailDataURL => {
-                                images.push({
-                                    originalDataURL: originalDataURL,
-                                    translatedDataURL: null,
-                                    bubbleTexts: [],
-                                    bubbleCoords: [],
-                                    thumbnailDataURL: thumbnailDataURL,
-                                    fileName: file.name,
-                                    fontSize: defaultFontSize,
-                                    fontFamily: defaultFontFamily
+                            createThumbnail(originalDataURL, file.name, images.length + i)
+                                .then(thumbnailDataURL => {
+                                    images.push({
+                                        originalDataURL: originalDataURL,
+                                        translatedDataURL: null,
+                                        bubbleTexts: [],
+                                        bubbleCoords: [],
+                                        thumbnailDataURL: thumbnailDataURL,
+                                        fileName: file.name,
+                                        fontSize: defaultFontSize,
+                                        fontFamily: defaultFontFamily,
+                                        layoutDirection: layoutDirectionSelect.val()
+                                    });
+                                    resolve();
+                                })
+                                .catch(error => { 
+                                    console.error("创建缩略图失败:", file.name, error);
+                                    errorMessage.text("创建缩略图失败，请检查图片文件: " + file.name).show();
+                                    resolve(); 
                                 });
-                                resolve();
-                            }).catch(reject);
                         };
                         reader.onerror = reject;
                         reader.readAsDataURL(file);
@@ -273,19 +282,25 @@ $(document).ready(function() {
                                     response.images.forEach((imageData, index) => {
                                         const pdfImagePromise = new Promise((resolveThumbnail, rejectThumbnail) => {
                                             const originalDataURL = "data:image/png;base64," + imageData;
-                                            createThumbnail(originalDataURL, "PDF图片" + (images.length + index), images.length + index).then(thumbnailDataURL => {
-                                                images.push({
-                                                    originalDataURL: originalDataURL,
-                                                    translatedDataURL: null,
-                                                    bubbleTexts: [],
-                                                    bubbleCoords: [],
-                                                    thumbnailDataURL: thumbnailDataURL,
-                                                    fileName: "PDF图片" + (images.length + index),
-                                                    fontSize: defaultFontSize,
-                                                    fontFamily: defaultFontFamily
+                                            createThumbnail(originalDataURL, "PDF图片" + (images.length + index), images.length + index)
+                                                .then(thumbnailDataURL => {
+                                                    images.push({
+                                                        originalDataURL: originalDataURL,
+                                                        translatedDataURL: null,
+                                                        bubbleTexts: [],
+                                                        bubbleCoords: [],
+                                                        thumbnailDataURL: thumbnailDataURL,
+                                                        fileName: "PDF图片" + (images.length + index),
+                                                        fontSize: defaultFontSize,
+                                                        fontFamily: defaultFontFamily,
+                                                        layoutDirection: layoutDirectionSelect.val()
+                                                    });
+                                                    resolveThumbnail();
+                                                })
+                                                .catch(error => { 
+                                                    console.error("PDF图片创建缩略图失败:", "PDF图片" + (images.length + index), error);
+                                                    resolveThumbnail(); 
                                                 });
-                                                resolveThumbnail();
-                                            }).catch(rejectThumbnail);
                                         });
                                         pdfImagePromises.push(pdfImagePromises);
                                     });
@@ -315,6 +330,7 @@ $(document).ready(function() {
                 })
                 .catch(error => {
                     console.error("文件处理过程中发生错误:", error);
+                    errorMessage.text("文件处理过程中发生错误，请查看控制台。").show(); 
                 });
 
         }
@@ -327,12 +343,18 @@ $(document).ready(function() {
         translateAllButton.prop('disabled', false);
         deleteCurrentImageButton.prop('disabled', false);
         sortImagesByName();
-        renderThumbnails();
-        if (images.length > 0 && currentImageIndex === -1) {
-            switchImage(0);
-        } else if (currentImageIndex !== -1) {
-            switchImage(currentImageIndex);
-        }
+
+        setTimeout(function() {
+            renderThumbnails();
+            if (images.length > 0 ) {
+                if (currentImageIndex === -1) {
+                    switchImage(0);
+                } else {
+                    switchImage(currentImageIndex);
+                }
+            }
+        }, 50); 
+
     }
 
     function sortImagesByName() {
@@ -411,6 +433,7 @@ $(document).ready(function() {
             fontSizeInput.val(images[index].fontSize);
             fontFamilySelect.val(images[index].fontFamily);
             deleteCurrentImageButton.prop('disabled', false);
+            layoutDirectionSelect.val(images[index].layoutDirection);
 
 
             updateNavigationButtons();
@@ -430,14 +453,14 @@ $(document).ready(function() {
         }
     }
 
-    function reRenderTranslatedImage(fontSize, fontFamily) {
-        if (currentImageIndex === -1 || !images[currentImageIndex].translatedDataURL || !images[currentImageIndex].bubbleTexts || !images[currentImageIndex].bubbleCoords) {
+    function reRenderTranslatedImage(fontSize, fontFamily, imageIndex) {
+        if (imageIndex === -1 || !images[imageIndex].translatedDataURL || !images[imageIndex].bubbleTexts || !images[imageIndex].bubbleCoords) {
             return;
         }
 
-        const imageData = images[currentImageIndex].originalDataURL.split(',')[1]; // Use original image for re-rendering
-        const translatedText = images[currentImageIndex].bubbleTexts;
-        const bubbleCoords = images[currentImageIndex].bubbleCoords;
+        const imageData = images[imageIndex].originalDataURL.split(',')[1];
+        const translatedText = images[imageIndex].bubbleTexts;
+        const bubbleCoords = images[imageIndex].bubbleCoords;
 
 
         $.ajax({
@@ -448,14 +471,18 @@ $(document).ready(function() {
                 translated_text: translatedText,
                 bubble_coords: bubbleCoords,
                 fontSize: fontSize,
-                fontFamily: fontFamily
+                fontFamily: fontFamily,
+                textDirection: layoutDirectionSelect.val()
             }),
             contentType: 'application/json',
             success: function(response) {
-                images[currentImageIndex].translatedDataURL = 'data:image/png;base64,' + response.rendered_image;
-                images[currentImageIndex].fontSize = fontSize;
-                images[currentImageIndex].fontFamily = fontFamily;
-                switchImage(currentImageIndex);
+                images[imageIndex].translatedDataURL = 'data:image/png;base64,' + response.rendered_image;
+                images[imageIndex].fontSize = fontSize;
+                images[imageIndex].fontFamily = fontFamily;
+                images[imageIndex].layoutDirection = layoutDirectionSelect.val();
+                if (currentImageIndex === imageIndex) {
+                    switchImage(currentImageIndex);
+                }
             },
             error: function(error) {
                 console.error('Error re-rendering image:', error);
@@ -469,7 +496,7 @@ $(document).ready(function() {
         const newFontSize = fontSizeInput.val();
         if (currentImageIndex !== -1 && images[currentImageIndex].translatedDataURL) {
             images[currentImageIndex].fontSize = newFontSize;
-            reRenderTranslatedImage(newFontSize, fontFamilySelect.val());
+            reRenderTranslatedImage(newFontSize, fontFamilySelect.val(), currentImageIndex);
         }
     });
 
@@ -477,7 +504,14 @@ $(document).ready(function() {
         const newFontFamily = fontFamilySelect.val();
         if (currentImageIndex !== -1 && images[currentImageIndex].translatedDataURL) {
             images[currentImageIndex].fontFamily = newFontFamily;
-            reRenderTranslatedImage(fontSizeInput.val(), newFontFamily);
+            reRenderTranslatedImage(fontSizeInput.val(), newFontFamily, currentImageIndex);
+        }
+    });
+
+    layoutDirectionSelect.on('change', function() {
+        if (currentImageIndex !== -1 && images[currentImageIndex].translatedDataURL) {
+            images[currentImageIndex].layoutDirection = layoutDirectionSelect.val();
+            reRenderTranslatedImage(fontSizeInput.val(), fontFamilySelect.val(), currentImageIndex);
         }
     });
 
@@ -530,7 +564,7 @@ $(document).ready(function() {
             data: JSON.stringify({
                 image: imageData,
                 target_language: targetLanguage,
-                textDirection: 'vertical',
+                textDirection: layoutDirectionSelect.val(),
                 fontSize: fontSize,
                 model_provider: modelProvider,
                 api_key: apiKey,
@@ -547,6 +581,7 @@ $(document).ready(function() {
                 images[currentImageIndex].bubbleCoords = response.bubble_coords || [];
                 images[currentImageIndex].fontSize = fontSize;
                 images[currentImageIndex].fontFamily = fontFamily;
+                images[currentImageIndex].layoutDirection = layoutDirectionSelect.val();
 
 
                 switchImage(currentImageIndex);
@@ -620,13 +655,14 @@ $(document).ready(function() {
         const fontFamily = fontFamilySelect.val();
         const modelProvider = $("#modelProvider").val();
         const promptContent = currentPromptContent;
+        const layoutDirection = layoutDirectionSelect.val();
 
         Promise.all(images.map((imageData, index) => {
             return new Promise((resolve, reject) => {
                 const postData = {
                     image: imageData.originalDataURL.split(',')[1],
                     target_language: targetLanguage,
-                    textDirection: 'vertical',
+                    textDirection: layoutDirection,
                     fontSize: fontSize,
                     model_provider: modelProvider,
                     api_key: apiKey,
@@ -646,6 +682,7 @@ $(document).ready(function() {
                         images[index].bubbleCoords = response.bubble_coords || [];
                         images[index].fontSize = fontSize;
                         images[index].fontFamily = fontFamily;
+                        images[index].layoutDirection = layoutDirection;
                         resolve();
                     },
                     error: function(error) {
@@ -694,12 +731,14 @@ $(document).ready(function() {
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
-
                 downloadingMessage.hide();
             });
     });
 
+
     downloadButton.click(function() {
+        downloadingMessage.show();
+
         if (currentImageIndex !== -1 && images[currentImageIndex].translatedDataURL) {
             const dataURL = images[currentImageIndex].translatedDataURL;
             const a = document.createElement('a');
@@ -708,21 +747,23 @@ $(document).ready(function() {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-        } else {
-            alert("没有可下载的翻译后图片");
         }
+        downloadingMessage.hide();
     });
 
     clearAllImagesButton.click(function() {
         images = [];
-        thumbnailList.empty();
         currentImageIndex = -1;
-        translatedImageDisplay.attr('src', '').hide();
+        thumbnailList.empty();
+        translatedImageDisplay.attr('src', '#').hide();
         resultSection.hide();
         downloadButton.hide();
         downloadAllImagesButton.hide();
         detectedTextInfo.hide();
-        updateNavigationButtons();
+        translateButton.prop('disabled', true);
+        translateAllButton.prop('disabled', true);
+        prevImageButton.prop('disabled', true);
+        nextImageButton.prop('disabled', true);
         deleteCurrentImageButton.prop('disabled', true);
     });
 
@@ -731,104 +772,156 @@ $(document).ready(function() {
             images.splice(currentImageIndex, 1);
             if (images.length === 0) {
                 currentImageIndex = -1;
-                translatedImageDisplay.attr('src', '').hide();
+                thumbnailList.empty();
+                translatedImageDisplay.attr('src', '#').hide();
                 resultSection.hide();
                 downloadButton.hide();
                 downloadAllImagesButton.hide();
                 detectedTextInfo.hide();
+                translateButton.prop('disabled', true);
+                translateAllButton.prop('disabled', true);
+                prevImageButton.prop('disabled', true);
+                nextImageButton.prop('disabled', true);
                 deleteCurrentImageButton.prop('disabled', true);
             } else {
                 if (currentImageIndex >= images.length) {
                     currentImageIndex = images.length - 1;
                 }
+                renderThumbnails();
                 switchImage(currentImageIndex);
             }
-            renderThumbnails();
-            updateNavigationButtons();
-        }
-    });
-
-    $(document).keydown(function(event) {
-        if (event.altKey) {
-            switch (event.key) {
-                case 'ArrowUp': 
-                    event.preventDefault(); 
-                    let currentFontSizeUp = parseInt(fontSizeInput.val());
-                    fontSizeInput.val(currentFontSizeUp + 1);
-                    fontSizeInput.trigger('change'); 
-                    break;
-                case 'ArrowDown': 
-                    event.preventDefault(); 
-                    let currentFontSizeDown = parseInt(fontSizeInput.val());
-                    fontSizeInput.val(Math.max(10, currentFontSizeDown - 1)); 
-                    fontSizeInput.trigger('change'); 
-                    break;
-                case 'ArrowLeft': 
-                    event.preventDefault(); 
-                    prevImageButton.click(); 
-                    break;
-                case 'ArrowRight': 
-                    event.preventDefault(); 
-                    nextImageButton.click(); 
-                    break;
-            }
         }
     });
 
 
-    function initializeModelSuggestions() {
-        modelProviderSelect.on('change', function() {
-            loadModelSuggestions(this.value);
-        });
-        loadModelSuggestions(modelProviderSelect.val());
-    }
+    modelProviderSelect.on('change', function() {
+        updateModelSuggestions();
+    });
 
-    function loadModelSuggestions(provider) {
+    function updateModelSuggestions() {
+        const provider = modelProviderSelect.val();
+        modelSuggestionsDiv.empty();
         $.ajax({
             url: '/get_used_models',
             type: 'GET',
             data: { model_provider: provider },
             dataType: 'json',
             success: function(response) {
-                populateModelSuggestions(response.models);
+                if (response.models && response.models.length > 0) {
+                    const ul = $("<ul></ul>");
+                    response.models.forEach(modelName => {
+                        const li = $("<li></li>").text(modelName).click(function() {
+                            $("#modelName").val(modelName);
+                            modelSuggestionsDiv.empty();
+                        });
+                        ul.append(li);
+                    });
+                    modelSuggestionsDiv.append(ul);
+                }
             },
             error: function(error) {
                 console.error("获取模型建议失败:", error);
-                modelSuggestionsDiv.html('<p>加载模型建议失败</p>');
             }
         });
     }
 
-    function populateModelSuggestions(models) {
-        modelSuggestionsDiv.empty();
-        if (models && models.length > 0) {
-            const ul = $("<ul></ul>");
-            models.forEach(function(modelName) {
-                const li = $("<li></li>").text(modelName).click(function() {
-                    $("#modelName").val(modelName);
-                    modelSuggestionsDiv.empty(); 
-                });
-                ul.append(li);
-            });
-            modelSuggestionsDiv.append(ul);
-        } else {
-            modelSuggestionsDiv.html('<p>暂无模型建议</p>');
-        }
-    }
-
-
-    modelNameInput.on('focus', function() {
-        loadModelSuggestions(modelProviderSelect.val()); 
-    });
-
-    modelNameInput.on('blur', function() {
+    $('#modelName').on('focus', updateModelSuggestions);
+    $('#modelName').on('blur', function() {
         setTimeout(function() {
-            modelSuggestionsDiv.empty(); 
+            modelSuggestionsDiv.empty();
         }, 200);
     });
+    $('#modelName').on('input', function() {
+        if ($(this).val().trim() === '') {
+            updateModelSuggestions();
+        } else {
+            modelSuggestionsDiv.empty();
+        }
+    });
 
 
-    initializeModelSuggestions();
+    applyFontSettingsToAllButton.click(function() {
+        if (currentImageIndex === -1) {
+            alert("请先选择一张图片。");
+            return;
+        }
 
+        const currentFontSize = fontSizeInput.val();
+        const currentFontFamily = fontFamilySelect.val();
+        const currentLayoutDirection = layoutDirectionSelect.val();
+
+        images.forEach((imageData, index) => {
+            imageData.fontSize = currentFontSize;
+            imageData.fontFamily = currentFontFamily;
+            imageData.layoutDirection = currentLayoutDirection;
+            if (imageData.translatedDataURL) {
+                reRenderTranslatedImage(currentFontSize, currentFontFamily, index);
+            }
+        });
+        alert("已将当前字号、字体和排版设置应用到所有图片。");
+    });
+
+    function reRenderTranslatedImage(fontSize, fontFamily, imageIndex) {
+        if (imageIndex === -1 || !images[imageIndex].translatedDataURL || !images[imageIndex].bubbleTexts || !images[imageIndex].bubbleCoords) {
+            return;
+        }
+
+        const imageData = images[imageIndex].originalDataURL.split(',')[1];
+        const translatedText = images[imageIndex].bubbleTexts;
+        const bubbleCoords = images[imageIndex].bubbleCoords;
+
+
+        $.ajax({
+            type: 'POST',
+            url: '/re_render_image',
+            data: JSON.stringify({
+                image: imageData,
+                translated_text: translatedText,
+                bubble_coords: bubbleCoords,
+                fontSize: fontSize,
+                fontFamily: fontFamily,
+                textDirection: layoutDirectionSelect.val()
+            }),
+            contentType: 'application/json',
+            success: function(response) {
+                images[imageIndex].translatedDataURL = 'data:image/png;base64,' + response.rendered_image;
+                images[imageIndex].fontSize = fontSize;
+                images[imageIndex].fontFamily = fontFamily;
+                images[imageIndex].layoutDirection = layoutDirectionSelect.val();
+                if (currentImageIndex === imageIndex) {
+                    switchImage(currentImageIndex);
+                }
+            },
+            error: function(error) {
+                console.error('Error re-rendering image:', error);
+                errorMessage.text("重新渲染图片出错，请查看控制台。").show();
+            }
+        });
+    }
+
+    $(document).keydown(function(event) {
+        if (event.altKey) {
+            switch (event.key) {
+                case 'ArrowUp':
+                    event.preventDefault();
+                    let currentFontSizeUp = parseInt(fontSizeInput.val());
+                    fontSizeInput.val(currentFontSizeUp + 1).trigger('change');
+                    break;
+                case 'ArrowDown':
+                    event.preventDefault();
+                    let currentFontSizeDown = parseInt(fontSizeInput.val());
+                    fontSizeInput.val(Math.max(10, currentFontSizeDown - 1)).trigger('change');
+                    break;
+                case 'ArrowLeft':
+                    event.preventDefault();
+                    prevImageButton.click();
+                    break;
+                case 'ArrowRight':
+                    event.preventDefault();
+                    nextImageButton.click();
+                    break;
+            }
+        }
+    });
 
 });
