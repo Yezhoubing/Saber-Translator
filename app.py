@@ -64,9 +64,9 @@ def translate_image():
         translated_image, bubble_texts, bubble_coords = detect_text_in_bubbles(
             img,
             target_language,
-            text_direction,
-            fontSize,
-            model_provider,
+            text_direction=text_direction,
+            fontSize=fontSize,
+            model_provider=model_provider,
             api_key=api_key,
             model_name=model_name,
             fontFamily=fontFamily,
@@ -101,8 +101,9 @@ def re_render_image():
         bubble_coords = data.get('bubble_coords')
         fontSize_str = data.get('fontSize')
         fontFamily = data.get('fontFamily')
+        text_direction = data.get('textDirection')
 
-        if not all([image_data, translated_text, bubble_coords, fontSize_str, fontFamily]):
+        if not all([image_data, translated_text, bubble_coords, fontSize_str, fontFamily, text_direction]):
             return jsonify({'error': '缺少必要的参数'}), 400
 
         try:
@@ -118,7 +119,8 @@ def re_render_image():
             translated_text,
             bubble_coords,
             fontSize,
-            fontFamily=fontFamily
+            fontFamily=fontFamily,
+            text_direction=text_direction
         )
 
         buffered = io.BytesIO()
@@ -193,7 +195,7 @@ def route_save_model_info():
 def pdf_to_images(pdf_file):
     images = []
     try:
-        pdf_reader = PyPDF2.PdfReader(pdf_file.stream)
+        pdf_reader = PyPDF2.PdfReader(pdf_file) 
         for page_num in range(len(pdf_reader.pages)):
             page = pdf_reader.pages[page_num]
             if '/Resources' in page and '/XObject' in page['/Resources']:
@@ -239,7 +241,7 @@ def upload_pdf():
 
     if pdf_file:
         try:
-            images = pdf_to_images(pdf_file.stream)
+            images = pdf_to_images(pdf_file)
             image_data_list = []
             for i, image in enumerate(images):
                 try:

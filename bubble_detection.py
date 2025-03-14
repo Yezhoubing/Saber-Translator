@@ -106,6 +106,42 @@ def draw_multiline_text_vertical_right_to_left(draw, text, font, x, y, max_heigh
             current_y += line_height
         current_x -= column_width
 
+def draw_multiline_text_horizontal(draw, text, font, x, y, max_width, fill='black'):
+    if not text:
+        return
+
+    lines = []
+    current_line = ""
+    current_line_width = 0
+
+    for char in text:
+        bbox = font.getbbox(char)
+        char_width = bbox[2] - bbox[0]
+        space_width = font.getbbox(' ')[2] - font.getbbox(' ')[0] 
+
+        if current_line_width + char_width <= max_width:
+            current_line += char
+            current_line_width += char_width
+        else:
+            lines.append(current_line)
+            current_line = char
+            current_line_width = char_width
+
+    lines.append(current_line)
+
+    current_y = y
+    line_height = font.size + 5
+
+    for line in lines:
+        current_x = x
+        for char in line:
+            draw.text((current_x, current_y), char, font=font, fill=fill, anchor="lt")
+            bbox = font.getbbox(char)
+            char_width = bbox[2] - bbox[0]
+            current_x += char_width
+        current_y += line_height
+
+
 def detect_text_in_bubbles(image, target_language='zh', text_direction='vertical', fontSize=30, model_provider='siliconflow', api_key=None, model_name=None, fontFamily="static/STSONG.TTF", prompt_content=None):
     try:
 
@@ -142,6 +178,10 @@ def detect_text_in_bubbles(image, target_language='zh', text_direction='vertical
 
         font_path = fontFamily
         font_size = int(fontSize)
+
+        print(f"尝试加载字体 (detect_text_in_bubbles): {font_path}") 
+
+
         try:
             font = ImageFont.truetype(font_path, font_size, encoding="utf-8")
         except IOError as e:
@@ -160,7 +200,12 @@ def detect_text_in_bubbles(image, target_language='zh', text_direction='vertical
             text_x = x2 - 10
             text_y = y1 + 10
             max_text_height = y2 - y1 - 20
-            draw_multiline_text_vertical_right_to_left(draw, bubble_texts[i], font, text_x, text_y, max_text_height)
+            max_text_width = x2 - x1 - 20 
+
+            if text_direction == 'vertical':
+                draw_multiline_text_vertical_right_to_left(draw, bubble_texts[i], font, text_x, text_y, max_text_height)
+            elif text_direction == 'horizontal':
+                draw_multiline_text_horizontal(draw, bubble_texts[i], font, x1 + 10, y1 + 10, max_text_width) 
 
         img_with_bubbles_cv = cv2.cvtColor(np.array(img_pil), cv2.COLOR_RGB2BGR)
         img_with_bubbles_pil = Image.fromarray(cv2.cvtColor(img_with_bubbles_cv, cv2.COLOR_BGR2RGB))
@@ -172,13 +217,17 @@ def detect_text_in_bubbles(image, target_language='zh', text_direction='vertical
         return image, [], []
 
 
-def re_render_text_in_bubbles(image, translated_texts, bubble_coords, fontSize=30, fontFamily="static/STSONG.TTF"):
+def re_render_text_in_bubbles(image, translated_texts, bubble_coords, fontSize=30, fontFamily="static/STSONG.TTF", text_direction='vertical'):
     try:
         img_pil = image.copy()
         draw = ImageDraw.Draw(img_pil)
 
         font_path = fontFamily
         font_size = int(fontSize)
+
+        print(f"尝试加载字体 (re_render_text_in_bubbles): {font_path}") 
+
+
         try:
             font = ImageFont.truetype(font_path, font_size, encoding="utf-8")
         except IOError as e:
@@ -202,7 +251,12 @@ def re_render_text_in_bubbles(image, translated_texts, bubble_coords, fontSize=3
                 text_x = x2 - 10
                 text_y = y1 + 10
                 max_text_height = y2 - y1 - 20
-                draw_multiline_text_vertical_right_to_left(draw, translated_texts[i], font, text_x, text_y, max_text_height)
+                max_text_width = x2 - x1 - 20 
+
+                if text_direction == 'vertical':
+                    draw_multiline_text_vertical_right_to_left(draw, translated_texts[i], font, text_x, text_y, max_text_height)
+                elif text_direction == 'horizontal':
+                    draw_multiline_text_horizontal(draw, translated_texts[i], font, x1 + 10, y1 + 10, max_text_width) # 修改 text_x, text_y, max_width 参数
             else:
                 print(f"警告：气泡坐标数量多于翻译文本数量，索引 {i} 超出范围。")
 
